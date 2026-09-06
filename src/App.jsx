@@ -7,6 +7,7 @@ import MetaConnect from './pages/MetaConnect';
 import Dashboard from './pages/Dashboard';
 import BrandSetup from './pages/BrandSetup';
 import ContentStudio from './pages/ContentStudio';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/brand-setup" element={<BrandSetup />} />
                 <Route path="/studio" element={<ContentStudio />} />
+                <Route path="/profile" element={<Profile />} />
               </Routes>
           </Router>
         </ToastProvider>

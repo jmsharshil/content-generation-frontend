@@ -14,6 +14,7 @@
   --color-border: rgba(255, 255, 255, 0.08);
   --color-glass: rgba(17, 24, 39, 0.75);
   --color-glass-border: rgba(255, 255, 255, 0.06);
+  --color-input-bg: rgba(0, 0, 0, 0.2);
 
   /* Typography */
   --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -36,6 +37,7 @@
   --color-border: rgba(0, 0, 0, 0.08);
   --color-glass: rgba(255, 255, 255, 0.85);
   --color-glass-border: rgba(0, 0, 0, 0.06);
+  --color-input-bg: #ffffff;
 }
 
 * {
@@ -163,12 +165,17 @@ a:hover {
   width: 100%;
   padding: 0.45rem 0.7rem;
   font-size: 0.8rem;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--color-input-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text);
   font-family: var(--font-primary);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+option {
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
 }
 
 .input-field:focus {

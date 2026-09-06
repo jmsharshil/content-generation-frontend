@@ -5,9 +5,30 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>jms-content-automation-frontend</title>
+    <style>
+      body { margin: 0; background-color: #0b0f19; }
+      @keyframes spinOrbitInit {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      @keyframes pulseGlowInit {
+        0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); transform: scale(1); }
+        50% { box-shadow: 0 0 30px rgba(139, 92, 246, 0.8); transform: scale(1.05); }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Initial Pre-loader -->
+      <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(11, 15, 25, 1); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999;">
+        <div style="position: relative; width: 120px; height: 120px; display: flex; justify-content: center; align-items: center; margin-bottom: 1.5rem;">
+          <div style="position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 3px solid transparent; border-top-color: #3b82f6; border-bottom-color: #8b5cf6; animation: spinOrbitInit 1.5s linear infinite;"></div>
+          <div style="width: 80px; height: 80px; background: #131a2a; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); animation: pulseGlowInit 2s ease-in-out infinite;">
+            <img src="https://hrmsknowcraftstorage.blob.core.windows.net/media/JMS.png" alt="JMS" style="height: 32px; object-fit: contain;" />
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

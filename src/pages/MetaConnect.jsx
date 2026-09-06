@@ -27,6 +27,9 @@ const MetaConnect = () => {
         setPageId(data.page_id);
         if (data.is_connected && !data.page_id) {
           fetchPages();
+        } else if (data.is_connected && data.page_id) {
+          // If they already have a meta account and a page selected, auto-redirect!
+          navigate('/dashboard');
         }
       }
     } catch (err) {
@@ -41,7 +44,9 @@ const MetaConnect = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        setPages(data);
+        // Fallback in case the API returns an object instead of an array directly
+        const pagesArray = Array.isArray(data) ? data : (data.pages || data.data || []);
+        setPages(pagesArray);
       }
     } catch (err) {
       console.error('Failed to fetch pages', err);
@@ -70,6 +75,7 @@ const MetaConnect = () => {
         hideLoader();
         showToast('Meta account linked!', 'success');
         fetchMetaStatus();
+        setTimeout(() => navigate('/dashboard'), 2000);
       } else {
         hideLoader();
         showToast('Failed to link Meta account.', 'error');
@@ -121,7 +127,9 @@ const MetaConnect = () => {
       if (res.ok) {
         hideLoader();
         showToast('Page selected successfully!', 'success');
-        navigate('/brand-setup');
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2000);
       } else {
         hideLoader();
         showToast('Failed to save page.', 'error');
@@ -167,7 +175,7 @@ const MetaConnect = () => {
           </div>
         )}
 
-        {isConnected && !pageId && pages.length > 0 && (
+        {isConnected && !pageId && (
           <div style={{ marginBottom: '1.5rem', textAlign: 'left' }}>
             <label className="label">Select Facebook Page</label>
             <select 
@@ -177,7 +185,7 @@ const MetaConnect = () => {
               style={{ width: '100%', marginBottom: '1rem' }}
             >
               <option value="">-- Choose a Page --</option>
-              {pages.map(p => (
+              {Array.isArray(pages) && pages.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
@@ -203,14 +211,6 @@ const MetaConnect = () => {
           </button>
         )}
 
-        <button 
-          className="btn btn-secondary"
-          onClick={() => navigate('/brand-setup')}
-          style={{ width: '100%', padding: '0.5rem', marginTop: isConnected ? '0.5rem' : 0 }}
-        >
-          <span>Skip for now</span>
-          <ArrowRight size={13} />
-        </button>
         
       </div>
     </div>

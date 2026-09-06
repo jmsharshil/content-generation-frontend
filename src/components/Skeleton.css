@@ -1,0 +1,45 @@
+.skeleton {
+  background: var(--bg-card, #2a2d3e);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.05) 20%,
+    rgba(255, 255, 255, 0.1) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+[data-theme="light"] .skeleton {
+  background: var(--bg-card, #ffffff);
+  background-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0.05) 20%,
+    rgba(0, 0, 0, 0.1) 60%,
+    rgba(0, 0, 0, 0)
+  );
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton.text {
+  margin-bottom: 0.5rem;
+}
+
+.skeleton.circle {
+  border-radius: 50%;
+}
+
+.skeleton.rect {
+  border-radius: 8px;
+}

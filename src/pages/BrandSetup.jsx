@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
-import { Type, Users, Save, Upload, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { Type, Users, Save, Upload, ChevronRight, ChevronLeft, Check, X } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
 import { useToast } from '../context/ToastContext';
 
@@ -8,6 +8,8 @@ const BrandSetup = () => {
   const [tone, setTone] = useState('');
   const [audience, setAudience] = useState('');
   const [guidelines, setGuidelines] = useState('');
+  const [assets, setAssets] = useState([]);
+  const fileInputRef = React.useRef(null);
   
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
@@ -65,6 +67,23 @@ const BrandSetup = () => {
 
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, totalSteps));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+  
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setAssets(prev => [...prev, ...Array.from(e.target.files)]);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setAssets(prev => [...prev, ...Array.from(e.dataTransfer.files)]);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
   
   return (
     <SidebarLayout title="Brand Knowledge Base">
@@ -149,21 +168,78 @@ const BrandSetup = () => {
             {currentStep === 4 && (
               <div className="fade-in">
                 <h2 style={{ marginTop: 0 }}>Brand Assets</h2>
-                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '1.5rem' }}>Upload logos or other visual assets (coming soon).</p>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginBottom: '1.5rem' }}>Upload logos or other visual assets.</p>
                 
-                <div style={{ 
-                  border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', 
-                  padding: '3rem 1.5rem', textAlign: 'center', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all var(--transition-fast)'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                <div 
+                  style={{ 
+                    border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', 
+                    padding: '3rem 1.5rem', textAlign: 'center', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all var(--transition-fast)'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                  onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
                 >
+                  <input 
+                    type="file" 
+                    multiple 
+                    ref={fileInputRef} 
+                    style={{ display: 'none' }} 
+                    onChange={handleFileChange} 
+                  />
                   <Upload size={24} color="var(--color-text-muted)" style={{ marginBottom: '0.75rem' }} />
                   <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 500 }}>Drag & Drop files</p>
                   <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>or click to browse</p>
                 </div>
+
+                {assets.length > 0 && (
+                  <div style={{ marginTop: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                    {assets.map((file, idx) => {
+                      const isImage = file.type.startsWith('image/');
+                      const previewUrl = isImage ? URL.createObjectURL(file) : null;
+                      
+                      return (
+                        <div key={idx} style={{ 
+                          position: 'relative',
+                          border: '1px solid var(--color-border)', 
+                          borderRadius: 'var(--radius-md)',
+                          overflow: 'hidden',
+                          width: '100px', height: '100px',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                          background: 'var(--color-bg)'
+                        }}>
+                          {isImage ? (
+                            <img src={previewUrl} alt={file.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <div style={{ padding: '0.5rem', textAlign: 'center', fontSize: '0.7rem', color: 'var(--color-text-muted)', wordBreak: 'break-all' }}>
+                              {file.name}
+                            </div>
+                          )}
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAssets(prev => prev.filter((_, i) => i !== idx));
+                              if (previewUrl) URL.revokeObjectURL(previewUrl);
+                            }}
+                            title="Remove file"
+                            style={{
+                              position: 'absolute', top: '4px', right: '4px',
+                              background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none',
+                              borderRadius: '50%', width: '20px', height: '20px',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              cursor: 'pointer', padding: 0
+                            }}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
             

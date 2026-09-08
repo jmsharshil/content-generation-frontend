@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, Building } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Building, Eye, EyeOff } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
 import { useToast } from '../context/ToastContext';
 
 const JmsAuth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({ email: '', password: '', businessName: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const passwordRef = React.useRef(null);
   const navigate = useNavigate();
   const { showLoader, hideLoader } = useLoader();
   const { showToast } = useToast();
@@ -116,14 +118,45 @@ const JmsAuth = () => {
               <label className="label">Email</label>
               <div style={{ position: 'relative' }}>
                 <Mail size={14} color="var(--color-text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input type="email" name="email" className="input-field" placeholder="you@company.com" style={{ paddingLeft: '2rem' }} value={formData.email} onChange={handleInputChange} required />
+                <input 
+                  type="email" 
+                  name="email" 
+                  className="input-field" 
+                  placeholder="you@company.com" 
+                  style={{ paddingLeft: '2rem' }} 
+                  value={formData.email} 
+                  onChange={handleInputChange} 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      passwordRef.current?.focus();
+                    }
+                  }}
+                  required 
+                />
               </div>
             </div>
             <div>
               <label className="label">Password</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={14} color="var(--color-text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input type="password" name="password" className="input-field" placeholder="••••••••" style={{ paddingLeft: '2rem' }} value={formData.password} onChange={handleInputChange} required />
+                <input 
+                  type={showPassword ? 'text' : 'password'} 
+                  name="password" 
+                  ref={passwordRef}
+                  className="input-field" 
+                  placeholder="••••••••" 
+                  style={{ paddingLeft: '2rem', paddingRight: '2rem' }} 
+                  value={formData.password} 
+                  onChange={handleInputChange} 
+                  required 
+                />
+                <div 
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', display: 'flex', color: 'var(--color-text-muted)' }}
+                >
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </div>
               </div>
             </div>
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', justifyContent: 'center', padding: '0.55rem' }}>

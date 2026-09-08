@@ -18,6 +18,7 @@ const ContentStudio = () => {
   const [isFetchingPosts, setIsFetchingPosts] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editContent, setEditContent] = useState('');
+  const [editMediaUrls, setEditMediaUrls] = useState('');
   
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,10 +92,19 @@ const ContentStudio = () => {
 
   const handleEditSave = async (id) => {
     try {
+      const urlsArray = editMediaUrls.split(',').map(u => u.trim()).filter(Boolean);
+      const payload = { generated_content: editContent, status: 'REVIEW' };
+      
+      if (urlsArray.length > 1) {
+        payload.media_urls = urlsArray;
+      } else if (urlsArray.length === 1) {
+        payload.media_url = urlsArray[0];
+      }
+
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${id}/`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` },
-        body: JSON.stringify({ generated_content: editContent, status: 'REVIEW' })
+        body: JSON.stringify(payload)
       });
       if (res.ok) { showToast('Updated.', 'success'); setEditingId(null); fetchPosts(); }
       else { showToast('Failed.', 'error'); }
@@ -304,6 +314,8 @@ const ContentStudio = () => {
                         <div style={{ fontSize: '0.65rem', color: editContent.length > 2000 ? 'var(--color-danger)' : 'var(--color-text-muted)', textAlign: 'right', marginBottom: '0.5rem' }}>
                           {editContent.length} chars
                         </div>
+                        <textarea className="input-field" rows="2" placeholder="Image/Media URLs (comma separated for carousel)" value={editMediaUrls} onChange={(e) => setEditMediaUrls(e.target.value)}
+                          style={{ width: '100%', resize: 'vertical', marginBottom: '0.5rem', fontSize: '0.75rem' }} />
                         <div style={{ display: 'flex', gap: '0.35rem' }}>
                           <button className="btn btn-primary" style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem' }} onClick={() => handleEditSave(post.id)}>Save</button>
                           <button className="btn btn-secondary" style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem' }} onClick={() => setEditingId(null)}>Cancel</button>
@@ -326,7 +338,12 @@ const ContentStudio = () => {
                     flexWrap: 'wrap', justifyContent: 'space-between'
                   }}>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={() => { setEditingId(post.id); setEditContent(post.generated_content); }}
+                      <button onClick={() => { 
+                          setEditingId(post.id); 
+                          setEditContent(post.generated_content);
+                          const urls = post.media_urls ? post.media_urls.join(',\n') : (post.media_url || '');
+                          setEditMediaUrls(urls);
+                        }}
                         style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.7rem', padding: '0.2rem 0.4rem', borderRadius: 'var(--radius-sm)', transition: 'all 0.15s' }}
                         onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                         onMouseOut={(e) => e.currentTarget.style.background = 'none'}

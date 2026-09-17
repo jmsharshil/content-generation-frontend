@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
-import { Sparkles, CheckSquare, Square, ThumbsUp, ThumbsDown, Edit3, Send, Hash, RefreshCw, Copy, Search, Filter } from 'lucide-react';
+import { Sparkles, CheckSquare, Square, ThumbsUp, ThumbsDown, Edit3, Send, Hash, RefreshCw, Copy, Search, Filter, Eye, X } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
 import { useToast } from '../context/ToastContext';
 import Skeleton from '../components/Skeleton';
@@ -16,6 +16,7 @@ const ContentStudio = () => {
   // Posts State
   const [posts, setPosts] = useState([]);
   const [isFetchingPosts, setIsFetchingPosts] = useState(true);
+  const [viewingPost, setViewingPost] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [editMediaUrls, setEditMediaUrls] = useState('');
@@ -337,27 +338,7 @@ const ContentStudio = () => {
                         {post.selected ? <CheckSquare size={15} color="var(--color-primary)" /> : <Square size={15} color="var(--color-text-muted)" />}
                       </div>
 
-                      {/* Platform icon circle */}
-                      {publishPlatform === 'instagram' && (
-                        <div style={{
-                          width: '24px', height: '24px', borderRadius: '50%',
-                          background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                        }}>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-                        </div>
-                      )}
-                      {publishPlatform === 'facebook' && (
-                        <div style={{
-                          width: '24px', height: '24px', borderRadius: '50%',
-                          background: '#1877F2',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                        }}>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
-                        </div>
-                      )}
-
-                      <div>
+                      {/* Platform icon removed from here, moved to modal */}                      <div>
                         <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)' }}>
                           {post.topic || 'Untitled Post'}
                         </p>
@@ -377,77 +358,18 @@ const ContentStudio = () => {
                       </span>
                     </div>
                   </div>
-
-                  {/* Post Content */}
-                  <div style={{ padding: '0.85rem 1rem' }}>
-                    {editingId === post.id ? (
-                      <div>
-                        <textarea className="input-field" rows="4" value={editContent} onChange={(e) => setEditContent(e.target.value)}
-                          style={{ width: '100%', resize: 'vertical', marginBottom: '0.2rem' }} />
-                        <div style={{ fontSize: '0.65rem', color: editContent.length > 2000 ? 'var(--color-danger)' : 'var(--color-text-muted)', textAlign: 'right', marginBottom: '0.5rem' }}>
-                          {editContent.length} chars
-                        </div>
-                        <textarea className="input-field" rows="2" placeholder="Image/Media URLs (comma separated for carousel)" value={editMediaUrls} onChange={(e) => setEditMediaUrls(e.target.value)}
-                          style={{ width: '100%', resize: 'vertical', marginBottom: '0.5rem', fontSize: '0.75rem' }} />
-                        <div style={{ display: 'flex', gap: '0.35rem' }}>
-                          <button className="btn btn-primary" style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem' }} onClick={() => handleEditSave(post.id)}>Save</button>
-                          <button className="btn btn-secondary" style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem' }} onClick={() => setEditingId(null)}>Cancel</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <p style={{
-                          margin: 0, lineHeight: '1.6', fontSize: '0.8rem', color: 'var(--color-text)',
-                          wordBreak: 'break-word', whiteSpace: 'pre-wrap'
-                        }}>
-                          {post.generated_content}
-                        </p>
-
-                        {/* Image Preview Block */}
-                        {post.media_url && (
-                          <div style={{ marginTop: '0.75rem', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                            <img
-                              src={post.media_url.startsWith('http') ? post.media_url : `${import.meta.env.VITE_API_URL}${post.media_url}`}
-                              alt="AI Generated for post"
-                              style={{ width: '100%', height: 'auto', display: 'block' }}
-                            />
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  {/* Post Footer */}
-                  <div style={{
-                    display: 'flex', gap: '0.5rem', padding: '0.5rem 1rem',
-                    borderTop: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.08)',
-                    flexWrap: 'wrap', justifyContent: 'space-between'
-                  }}>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={() => {
-                        setEditingId(post.id);
-                        setEditContent(post.generated_content);
-                        const urls = post.media_urls ? post.media_urls.join(',\n') : (post.media_url || '');
-                        setEditMediaUrls(urls);
-                      }}
-                        style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.7rem', padding: '0.2rem 0.4rem', borderRadius: 'var(--radius-sm)', transition: 'all 0.15s' }}
-                        onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                        onMouseOut={(e) => e.currentTarget.style.background = 'none'}
-                      >
-                        <Edit3 size={12} color="var(--color-primary)" /> Edit
-                      </button>
-                      <button onClick={() => handleCopy(post.generated_content)}
-                        style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.7rem', padding: '0.2rem 0.4rem', borderRadius: 'var(--radius-sm)', transition: 'all 0.15s' }}
-                        onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                        onMouseOut={(e) => e.currentTarget.style.background = 'none'}
-                      >
-                        <Copy size={12} color="var(--color-secondary)" /> Copy
-                      </button>
-                    </div>
-
-                    <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
-                      {post.generated_content?.length || 0} chars
-                    </div>
+                  {/* Minimal Post Actions */}
+                  <div style={{ padding: '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)' }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '75%' }}>
+                      {post.generated_content ? post.generated_content.substring(0, 90) + '...' : 'No content generated'}
+                    </p>
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={() => setViewingPost(post)}
+                      style={{ padding: '0.35rem 0.85rem', fontSize: '0.75rem', borderRadius: '20px', background: 'rgba(59,130,246,0.15)', color: 'var(--color-primary)', border: '1px solid rgba(59,130,246,0.3)', boxShadow: 'none' }}
+                    >
+                      <Eye size={13} /> View
+                    </button>
                   </div>
                 </div>
               );
@@ -455,6 +377,119 @@ const ContentStudio = () => {
           </div>
         </div>
       </div>
+
+      {/* View Post Modal */}
+      {viewingPost && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div className="glass-panel animate-fade-in" style={{
+            width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto',
+            background: 'var(--color-bg-secondary)', padding: 0,
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)', border: '1px solid var(--color-border)'
+          }}>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                {/* Platform Icon Based on Backend Data or Dropdown */}
+                {(() => {
+                  const displayPlatform = (viewingPost.status === 'PUBLISHED' && viewingPost.published_platform) 
+                    ? viewingPost.published_platform.toLowerCase() 
+                    : publishPlatform;
+                    
+                  if (displayPlatform === 'instagram') {
+                    return (
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(220, 39, 67, 0.4)' }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1877F2', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(24, 119, 242, 0.4)' }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                      </div>
+                    );
+                  }
+                })()}
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text)' }}>{viewingPost.topic || 'Review Post'}</h3>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.1rem' }}>
+                    {viewingPost.status === 'PUBLISHED' && viewingPost.published_platform 
+                      ? `Published to ${viewingPost.published_platform}` 
+                      : `Ready for ${publishPlatform}`}
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => { setViewingPost(null); setEditingId(null); }} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '0.4rem', borderRadius: '50%', display: 'flex' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem' }}>
+              {editingId === viewingPost.id ? (
+                <div>
+                  <label className="label">Post Content</label>
+                  <textarea className="input-field" rows="8" value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ width: '100%', resize: 'vertical', marginBottom: '0.2rem' }} />
+                  <div style={{ fontSize: '0.65rem', color: editContent.length > 2000 ? 'var(--color-danger)' : 'var(--color-text-muted)', textAlign: 'right', marginBottom: '1rem' }}>{editContent.length} chars</div>
+                  
+                  <label className="label">Image URLs</label>
+                  <textarea className="input-field" rows="2" placeholder="Image/Media URLs (comma separated for carousel)" value={editMediaUrls} onChange={(e) => setEditMediaUrls(e.target.value)} style={{ width: '100%', resize: 'vertical', marginBottom: '1.5rem', fontSize: '0.75rem' }} />
+                  
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-secondary" onClick={() => setEditingId(null)}>Cancel</button>
+                    <button className="btn btn-primary" onClick={async () => { 
+                      await handleEditSave(viewingPost.id); 
+                      setViewingPost({...viewingPost, generated_content: editContent, media_urls: editMediaUrls.split(',').map(u=>u.trim()).filter(Boolean)}); 
+                    }}>Save Changes</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p style={{ margin: 0, lineHeight: '1.7', fontSize: '0.95rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: '1.5rem' }}>
+                    {viewingPost.generated_content}
+                  </p>
+                  
+                  {viewingPost.media_url && (
+                    <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--color-glass-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                      <img
+                        src={viewingPost.media_url.startsWith('http') ? viewingPost.media_url : `${import.meta.env.VITE_API_URL}${viewingPost.media_url}`}
+                        alt="AI Generated"
+                        style={{ width: '100%', height: 'auto', display: 'block' }}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            {!editingId && (
+              <div style={{ display: 'flex', gap: '0.5rem', padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.15)', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button className="btn btn-primary" style={{ background: 'rgba(59,130,246,0.15)', color: 'var(--color-primary)', border: '1px solid rgba(59,130,246,0.3)', boxShadow: 'none' }} onClick={() => { 
+                    setEditingId(viewingPost.id); 
+                    setEditContent(viewingPost.generated_content);
+                    const urls = viewingPost.media_urls ? viewingPost.media_urls.join(',\n') : (viewingPost.media_url || '');
+                    setEditMediaUrls(urls);
+                  }}>
+                    <Edit3 size={14} /> Edit Content
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => handleCopy(viewingPost.generated_content)}>
+                    <Copy size={14} /> Copy Text
+                  </button>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                  {viewingPost.generated_content?.length || 0} chars
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <style>{`
         @media (max-width: 900px) {

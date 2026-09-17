@@ -115,6 +115,7 @@ const BrandSetup = () => {
         });
 
         await Promise.all(uploadPromises);
+        setAssets(prev => prev.filter(a => !a.isNew));
         // Refresh assets from backend to get IDs and proper URLs
         fetchAssets();
       }
@@ -323,7 +324,7 @@ const BrandSetup = () => {
                     
                     const previewUrl = asset.isNew 
                       ? (isImage ? URL.createObjectURL(asset.fileObj) : null) 
-                      : (isImage ? asset.url : null);
+                      : (isImage ? (asset.url.startsWith('http') ? asset.url : `${import.meta.env.VITE_API_URL}${asset.url}`) : null);
                     
                     return (
                       <div key={idx} style={{ 

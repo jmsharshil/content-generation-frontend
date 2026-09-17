@@ -20,6 +20,11 @@ const ContentStudio = () => {
   const [editContent, setEditContent] = useState('');
   const [editMediaUrls, setEditMediaUrls] = useState('');
   
+  // Publish & Ad Settings
+  const [publishPlatform, setPublishPlatform] = useState('facebook');
+  const [promoteAsAd, setPromoteAsAd] = useState(false);
+  const [adBudget, setAdBudget] = useState(10.00);
+  
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
@@ -78,16 +83,36 @@ const ContentStudio = () => {
   const handlePublish = async () => {
     const selected = posts.filter(p => p.selected);
     if (selected.length === 0) { showToast('Select at least one post.', 'info'); return; }
-    showLoader('Publishing to Meta...');
+    showLoader(`Publishing to ${publishPlatform}...`);
     try {
       for (const post of selected) {
+        // 1. Publish Post
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${post.id}/publish/`, {
-          method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
+          method: 'POST', 
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ platform: publishPlatform })
         });
-        if (!res.ok) throw new Error('Failed');
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || 'Failed to publish');
+        }
+
+        // 2. Create Ad if toggled
+        if (promoteAsAd) {
+          showLoader('Creating Ad Campaign...');
+          const adRes = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${post.id}/create-ad/`, {
+            method: 'POST', 
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ budget: adBudget })
+          });
+          if (!adRes.ok) {
+            const adErrData = await adRes.json();
+            throw new Error(adErrData.error || 'Failed to create ad');
+          }
+        }
       }
-      hideLoader(); showToast('Published!', 'success'); fetchPosts();
-    } catch (error) { hideLoader(); showToast('Error publishing.', 'error'); }
+      hideLoader(); showToast(`Success! ${promoteAsAd ? 'Published and Ad created.' : 'Published.'}`, 'success'); fetchPosts();
+    } catch (error) { hideLoader(); showToast(error.message || 'Error processing request.', 'error'); }
   };
 
   const handleEditSave = async (id) => {
@@ -165,7 +190,7 @@ const ContentStudio = () => {
           <div style={{ marginBottom: '0.75rem' }}>
             <label className="label">Quick Prompts</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-              {['Product Launch', 'Hiring Post', 'Tips & Tricks'].map(tag => (
+              {['Product Launch', 'Hiring Post', 'Tips & Tricks', 'MSME', 'AI Agents', 'Client Testimonial', 'Behind the Scenes', 'Holiday Greetings', 'Industry News', 'Special Offer', 'Company Milestone', 'Event Announcement', 'Educational Post'].map(tag => (
                 <span key={tag} style={{ 
                   fontSize: '0.7rem', padding: '0.2rem 0.55rem', 
                   background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)',
@@ -193,7 +218,40 @@ const ContentStudio = () => {
               <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>Select posts to publish to Meta.</p>
             </div>
             
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              
+              {/* Ad Promotion Toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem 0.6rem', borderRadius: 'var(--radius-md)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer', color: 'var(--color-text)' }}>
+                  <input type="checkbox" checked={promoteAsAd} onChange={(e) => setPromoteAsAd(e.target.checked)} style={{ accentColor: 'var(--color-primary)' }} />
+                  Promote as Ad
+                </label>
+                {promoteAsAd && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>$</span>
+                    <input 
+                      type="number" 
+                      value={adBudget} 
+                      onChange={(e) => setAdBudget(parseFloat(e.target.value))}
+                      className="input-field" 
+                      style={{ padding: '0.2rem', width: '60px', fontSize: '0.75rem', height: 'auto' }} 
+                      min="1"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Platform Selector */}
+              <select 
+                className="input-field" 
+                value={publishPlatform} 
+                onChange={(e) => setPublishPlatform(e.target.value)}
+                style={{ padding: '0.4rem', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(59,130,246,0.1)', color: 'var(--color-primary)', border: '1px solid rgba(59,130,246,0.3)' }}
+              >
+                <option value="facebook">Facebook</option>
+                <option value="instagram">Instagram</option>
+              </select>
+
               {/* Search & Filter */}
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <Search size={14} style={{ position: 'absolute', left: '8px', color: 'var(--color-text-muted)' }} />
@@ -203,7 +261,7 @@ const ContentStudio = () => {
                   placeholder="Search..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ paddingLeft: '28px', padding: '0.4rem 0.4rem 0.4rem 28px', width: '150px', fontSize: '0.75rem' }} 
+                  style={{ paddingLeft: '28px', padding: '0.4rem 0.4rem 0.4rem 28px', width: '120px', fontSize: '0.75rem' }} 
                 />
               </div>
               <select 
@@ -219,7 +277,7 @@ const ContentStudio = () => {
               </select>
 
               <button className="btn btn-secondary" onClick={fetchPosts} title="Refresh"><RefreshCw size={13} /></button>
-              <button className="btn btn-primary" onClick={handlePublish}><Send size={13} /> Publish</button>
+              <button className="btn btn-primary" onClick={handlePublish} style={{ background: 'var(--gradient-primary)', border: 'none' }}><Send size={13} /> Publish</button>
             </div>
           </div>
 
@@ -279,10 +337,25 @@ const ContentStudio = () => {
                         {post.selected ? <CheckSquare size={15} color="var(--color-primary)" /> : <Square size={15} color="var(--color-text-muted)" />}
                       </div>
                       
-                      {/* Facebook icon circle */}
-                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#1877f2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <span style={{ color: 'white', fontSize: '0.7rem', fontWeight: 700 }}>f</span>
-                      </div>
+                      {/* Platform icon circle */}
+                      {publishPlatform === 'instagram' && (
+                        <div style={{ 
+                          width: '24px', height: '24px', borderRadius: '50%', 
+                          background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)', 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+                        }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                        </div>
+                      )}
+                      {publishPlatform === 'facebook' && (
+                        <div style={{ 
+                          width: '24px', height: '24px', borderRadius: '50%', 
+                          background: '#1877F2', 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+                        }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                        </div>
+                      )}
                       
                       <div>
                         <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)' }}>

@@ -28,12 +28,13 @@ const BrandSetup = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        const existingAssets = data.map(item => ({
+        const results = data.results || data;
+        const existingAssets = results.map(item => ({
           isNew: false,
           id: item.id,
-          name: item.name,
+          name: item.name || 'Uploaded File',
           url: item.file,
-          asset_type: item.asset_type
+          asset_type: item.asset_type || 'DOCUMENT'
         }));
         setAssets(prev => {
           const newFiles = prev.filter(a => a.isNew);
@@ -191,11 +192,11 @@ const BrandSetup = () => {
           display: 'grid', 
           gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))', 
           gap: '1.5rem',
-          alignItems: 'start'
+          alignItems: 'stretch'
         }}>
           
           {/* Card 1: Company Details */}
-          <div className="glass-panel hover-card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="glass-panel hover-card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
               <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '0.4rem', borderRadius: 'var(--radius-sm)', color: 'var(--color-primary)' }}>
                 <Building size={18} />
@@ -214,21 +215,21 @@ const BrandSetup = () => {
               />
             </div>
             
-            <div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <label className="label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                Company Background / Brochure Text
+                Company Description
               </label>
               <textarea 
                 className="input-field" rows="6" 
                 placeholder="e.g., JMS TechNova Delivers AI-powered Business Solutions..."
                 value={companyDescription} onChange={(e) => setCompanyDescription(e.target.value)}
-                style={{ resize: 'vertical' }}
+                style={{ resize: 'vertical', flex: 1 }}
               />
             </div>
           </div>
 
           {/* Card 2: Voice & Audience */}
-          <div className="glass-panel hover-card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="glass-panel hover-card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
               <div style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '0.4rem', borderRadius: 'var(--radius-sm)', color: 'var(--color-secondary)' }}>
                 <Users size={18} />
@@ -236,32 +237,33 @@ const BrandSetup = () => {
               <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Voice & Audience</h3>
             </div>
 
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               <label className="label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 Target Audience
               </label>
-              <input 
-                type="text" className="input-field" 
+              <textarea 
+                className="input-field" rows="3" 
                 placeholder="e.g., B2B SaaS founders, tech enthusiasts..." 
                 value={audience} onChange={(e) => setAudience(e.target.value)}
+                style={{ resize: 'vertical' }}
               />
             </div>
 
-            <div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <label className="label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Type size={14} /> Tone & Personality
               </label>
               <textarea 
                 className="input-field" rows="6" 
-                placeholder="e.g., Professional yet approachable. We use emojis occasionally but remain informative."
+                placeholder="e.g., Professional, innovative, and authoritative..."
                 value={tone} onChange={(e) => setTone(e.target.value)}
-                style={{ resize: 'vertical' }}
+                style={{ resize: 'vertical', flex: 1 }}
               />
             </div>
           </div>
 
           {/* Card 3: Guidelines */}
-          <div className="glass-panel hover-card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="glass-panel hover-card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
               <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '0.4rem', borderRadius: 'var(--radius-sm)', color: '#f59e0b' }}>
                 <Check size={18} />
@@ -269,15 +271,15 @@ const BrandSetup = () => {
               <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Brand Guidelines</h3>
             </div>
             
-            <div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <label className="label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 Rules & Taglines
               </label>
               <textarea 
-                className="input-field" rows="4" 
+                className="input-field" 
                 placeholder="e.g., Never use slang. Always mention our #Tagline at the end. Avoid mentioning competitors."
                 value={guidelines} onChange={(e) => setGuidelines(e.target.value)}
-                style={{ resize: 'vertical' }}
+                style={{ resize: 'vertical', flex: 1, minHeight: '140px' }}
               />
             </div>
           </div>

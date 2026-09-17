@@ -8,23 +8,23 @@ import Skeleton from '../components/Skeleton';
 const ContentStudio = () => {
   const { showLoader, hideLoader } = useLoader();
   const { showToast } = useToast();
-  
+
   // Prompt Engine State
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState('Professional');
-  
+
   // Posts State
   const [posts, setPosts] = useState([]);
   const [isFetchingPosts, setIsFetchingPosts] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [editMediaUrls, setEditMediaUrls] = useState('');
-  
+
   // Publish & Ad Settings
   const [publishPlatform, setPublishPlatform] = useState('facebook');
   const [promoteAsAd, setPromoteAsAd] = useState(false);
   const [adBudget, setAdBudget] = useState(10.00);
-  
+
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
@@ -39,7 +39,7 @@ const ContentStudio = () => {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         const postsData = data.results || data; // Handle pagination or flat array
@@ -70,7 +70,7 @@ const ContentStudio = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         },
-        body: JSON.stringify({ topic, tone }) 
+        body: JSON.stringify({ topic, tone })
       });
       if (response.ok) {
         hideLoader(); showToast('Post generated!', 'success'); setTopic(''); fetchPosts();
@@ -88,7 +88,7 @@ const ContentStudio = () => {
       for (const post of selected) {
         // 1. Publish Post
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${post.id}/publish/`, {
-          method: 'POST', 
+          method: 'POST',
           headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ platform: publishPlatform })
         });
@@ -101,7 +101,7 @@ const ContentStudio = () => {
         if (promoteAsAd) {
           showLoader('Creating Ad Campaign...');
           const adRes = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${post.id}/create-ad/`, {
-            method: 'POST', 
+            method: 'POST',
             headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ budget: adBudget })
           });
@@ -119,7 +119,7 @@ const ContentStudio = () => {
     try {
       const urlsArray = editMediaUrls.split(',').map(u => u.trim()).filter(Boolean);
       const payload = { generated_content: editContent, status: 'REVIEW' };
-      
+
       if (urlsArray.length > 1) {
         payload.media_urls = urlsArray;
       } else if (urlsArray.length === 1) {
@@ -139,7 +139,7 @@ const ContentStudio = () => {
   const toggleSelect = (id) => {
     setPosts(posts.map(p => p.id === id ? { ...p, selected: !p.selected } : p));
   };
-  
+
   const handleCopy = (content) => {
     navigator.clipboard.writeText(content);
     showToast('Copied to clipboard!', 'success');
@@ -148,24 +148,24 @@ const ContentStudio = () => {
 
   return (
     <SidebarLayout title="Content Studio">
-      
+
       <div className="studio-grid" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1rem' }}>
-        
+
         {/* Left: Prompt Engine */}
         <div className="glass-panel" style={{ height: 'fit-content' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <Sparkles size={15} color="var(--color-primary)" />
             <h3 style={{ margin: 0 }}>AI Prompt Engine</h3>
           </div>
-          
+
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', marginBottom: '0.75rem', lineHeight: '1.5' }}>
             Describe the topic. AI will use your <b>Brand Knowledge Base</b> to match your tone.
           </p>
 
           <label className="label">Topic</label>
           <div style={{ position: 'relative' }}>
-            <textarea 
-              className="input-field" rows="4" 
+            <textarea
+              className="input-field" rows="4"
               placeholder="e.g., A promotional series for our new AI feature..."
               value={topic} onChange={(e) => setTopic(e.target.value)}
               style={{ resize: 'vertical', marginBottom: '0.2rem', width: '100%' }}
@@ -174,9 +174,9 @@ const ContentStudio = () => {
               {topic.length} / 500
             </div>
           </div>
-          
+
           <label className="label">Tone</label>
-          <select 
+          <select
             className="input-field"
             value={tone} onChange={(e) => setTone(e.target.value)}
             style={{ marginBottom: '0.75rem', width: '100%' }}
@@ -191,15 +191,15 @@ const ContentStudio = () => {
             <label className="label">Quick Prompts</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
               {['Product Launch', 'Hiring Post', 'Tips & Tricks', 'MSME', 'AI Agents', 'Client Testimonial', 'Behind the Scenes', 'Holiday Greetings', 'Industry News', 'Special Offer', 'Company Milestone', 'Event Announcement', 'Educational Post'].map(tag => (
-                <span key={tag} style={{ 
-                  fontSize: '0.7rem', padding: '0.2rem 0.55rem', 
+                <span key={tag} style={{
+                  fontSize: '0.7rem', padding: '0.2rem 0.55rem',
                   background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)',
                   borderRadius: '1rem', cursor: 'pointer', transition: 'all 0.15s',
                   color: 'var(--color-text-muted)'
                 }}
-                onClick={() => setTopic(tag)}
-                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(59,130,246,0.1)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
-                onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
+                  onClick={() => setTopic(tag)}
+                  onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(59,130,246,0.1)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
                 >+ {tag}</span>
               ))}
             </div>
@@ -217,9 +217,9 @@ const ContentStudio = () => {
               <h2 style={{ margin: 0 }}>Review & Approve</h2>
               <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>Select posts to publish to Meta.</p>
             </div>
-            
+
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              
+
               {/* Ad Promotion Toggle */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem 0.6rem', borderRadius: 'var(--radius-md)' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer', color: 'var(--color-text)' }}>
@@ -229,12 +229,12 @@ const ContentStudio = () => {
                 {promoteAsAd && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>$</span>
-                    <input 
-                      type="number" 
-                      value={adBudget} 
+                    <input
+                      type="number"
+                      value={adBudget}
                       onChange={(e) => setAdBudget(parseFloat(e.target.value))}
-                      className="input-field" 
-                      style={{ padding: '0.2rem', width: '60px', fontSize: '0.75rem', height: 'auto' }} 
+                      className="input-field"
+                      style={{ padding: '0.2rem', width: '60px', fontSize: '0.75rem', height: 'auto' }}
                       min="1"
                     />
                   </div>
@@ -242,9 +242,9 @@ const ContentStudio = () => {
               </div>
 
               {/* Platform Selector */}
-              <select 
-                className="input-field" 
-                value={publishPlatform} 
+              <select
+                className="input-field"
+                value={publishPlatform}
                 onChange={(e) => setPublishPlatform(e.target.value)}
                 style={{ padding: '0.4rem', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(59,130,246,0.1)', color: 'var(--color-primary)', border: '1px solid rgba(59,130,246,0.3)' }}
               >
@@ -255,18 +255,18 @@ const ContentStudio = () => {
               {/* Search & Filter */}
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <Search size={14} style={{ position: 'absolute', left: '8px', color: 'var(--color-text-muted)' }} />
-                <input 
-                  type="text" 
-                  className="input-field" 
-                  placeholder="Search..." 
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ paddingLeft: '28px', padding: '0.4rem 0.4rem 0.4rem 28px', width: '120px', fontSize: '0.75rem' }} 
+                  style={{ paddingLeft: '28px', padding: '0.4rem 0.4rem 0.4rem 28px', width: '120px', fontSize: '0.75rem' }}
                 />
               </div>
-              <select 
-                className="input-field" 
-                value={filterStatus} 
+              <select
+                className="input-field"
+                value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 style={{ padding: '0.4rem', fontSize: '0.75rem' }}
               >
@@ -315,9 +315,9 @@ const ContentStudio = () => {
               const timeAgo = post.created_at ? new Date(post.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
 
               return (
-                <div 
+                <div
                   key={post.id}
-                  style={{ 
+                  style={{
                     background: post.selected ? 'rgba(59,130,246,0.04)' : 'var(--color-glass)',
                     border: `1px solid ${post.selected ? 'rgba(59,130,246,0.25)' : 'var(--color-glass-border)'}`,
                     borderRadius: 'var(--radius-lg)',
@@ -327,7 +327,7 @@ const ContentStudio = () => {
                   }}
                 >
                   {/* Post Header */}
-                  <div style={{ 
+                  <div style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '0.6rem 1rem', borderBottom: '1px solid var(--color-border)',
                     background: 'rgba(0,0,0,0.15)'
@@ -336,27 +336,27 @@ const ContentStudio = () => {
                       <div style={{ cursor: 'pointer', display: 'flex' }} onClick={() => toggleSelect(post.id)}>
                         {post.selected ? <CheckSquare size={15} color="var(--color-primary)" /> : <Square size={15} color="var(--color-text-muted)" />}
                       </div>
-                      
+
                       {/* Platform icon circle */}
                       {publishPlatform === 'instagram' && (
-                        <div style={{ 
-                          width: '24px', height: '24px', borderRadius: '50%', 
-                          background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)', 
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+                        <div style={{
+                          width: '24px', height: '24px', borderRadius: '50%',
+                          background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                         }}>
                           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
                         </div>
                       )}
                       {publishPlatform === 'facebook' && (
-                        <div style={{ 
-                          width: '24px', height: '24px', borderRadius: '50%', 
-                          background: '#1877F2', 
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+                        <div style={{
+                          width: '24px', height: '24px', borderRadius: '50%',
+                          background: '#1877F2',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                         }}>
                           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
                         </div>
                       )}
-                      
+
                       <div>
                         <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)' }}>
                           {post.topic || 'Untitled Post'}
@@ -368,9 +368,9 @@ const ContentStudio = () => {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ 
+                      <span style={{
                         fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px',
-                        padding: '0.15rem 0.5rem', background: sc.bg, color: sc.text, 
+                        padding: '0.15rem 0.5rem', background: sc.bg, color: sc.text,
                         borderRadius: '10px', border: `1px solid ${sc.border}`
                       }}>
                         {post.status}
@@ -395,28 +395,41 @@ const ContentStudio = () => {
                         </div>
                       </div>
                     ) : (
-                      <p style={{ 
-                        margin: 0, lineHeight: '1.6', fontSize: '0.8rem', color: 'var(--color-text)',
-                        wordBreak: 'break-word', whiteSpace: 'pre-wrap'
-                      }}>
-                        {post.generated_content}
-                      </p>
+                      <>
+                        <p style={{
+                          margin: 0, lineHeight: '1.6', fontSize: '0.8rem', color: 'var(--color-text)',
+                          wordBreak: 'break-word', whiteSpace: 'pre-wrap'
+                        }}>
+                          {post.generated_content}
+                        </p>
+
+                        {/* Image Preview Block */}
+                        {post.media_url && (
+                          <div style={{ marginTop: '0.75rem', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                            <img
+                              src={post.media_url.startsWith('http') ? post.media_url : `${import.meta.env.VITE_API_URL}${post.media_url}`}
+                              alt="AI Generated for post"
+                              style={{ width: '100%', height: 'auto', display: 'block' }}
+                            />
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
                   {/* Post Footer */}
-                  <div style={{ 
+                  <div style={{
                     display: 'flex', gap: '0.5rem', padding: '0.5rem 1rem',
                     borderTop: '1px solid var(--color-border)', background: 'rgba(0,0,0,0.08)',
                     flexWrap: 'wrap', justifyContent: 'space-between'
                   }}>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={() => { 
-                          setEditingId(post.id); 
-                          setEditContent(post.generated_content);
-                          const urls = post.media_urls ? post.media_urls.join(',\n') : (post.media_url || '');
-                          setEditMediaUrls(urls);
-                        }}
+                      <button onClick={() => {
+                        setEditingId(post.id);
+                        setEditContent(post.generated_content);
+                        const urls = post.media_urls ? post.media_urls.join(',\n') : (post.media_url || '');
+                        setEditMediaUrls(urls);
+                      }}
                         style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '0.7rem', padding: '0.2rem 0.4rem', borderRadius: 'var(--radius-sm)', transition: 'all 0.15s' }}
                         onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                         onMouseOut={(e) => e.currentTarget.style.background = 'none'}
@@ -431,7 +444,7 @@ const ContentStudio = () => {
                         <Copy size={12} color="var(--color-secondary)" /> Copy
                       </button>
                     </div>
-                    
+
                     <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
                       {post.generated_content?.length || 0} chars
                     </div>

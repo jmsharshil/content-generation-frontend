@@ -1,5 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+html { font-size: 14px; }
+
 :root {
   /* Color Palette (Professional CRM) */
   --color-bg: #0b0f19;
@@ -48,7 +50,7 @@
 
 body {
   font-family: var(--font-primary);
-  font-size: 13px;
+  font-size: 0.9rem;
   background-color: var(--color-bg);
   color: var(--color-text);
   line-height: 1.5;
@@ -238,7 +240,7 @@ option {
 /* Mobile (< 768px) */
 @media (max-width: 768px) {
   body {
-    font-size: 13px;
+    font-size: 0.9rem;
   }
 
   h1 { font-size: 1.1rem; }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, PenTool, LogOut, Sun, Moon, Menu, X, User, PanelLeftClose, PanelLeftOpen, Megaphone, MessageSquareReply } from 'lucide-react';
+import { LayoutDashboard, BookOpen, PenTool, LogOut, Sun, Moon, Menu, X, User, PanelLeftClose, PanelLeftOpen, Megaphone, MessageSquareReply, Clock } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 
@@ -58,6 +58,7 @@ const SidebarLayout = ({ children, title }) => {
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={16} /> },
     { name: 'Brand Setup', path: '/brand-setup', icon: <BookOpen size={16} /> },
     { name: 'Content Studio', path: '/studio', icon: <PenTool size={16} /> },
+    { name: 'History', path: '/history', icon: <Clock size={16} /> },
     { name: 'Ad Campaigns', path: '/ad-campaigns', icon: <Megaphone size={16} /> },
     { name: 'Auto-Reply', path: '/auto-reply', icon: <MessageSquareReply size={16} /> },
     { name: 'Profile', path: '/profile', icon: <User size={16} /> },

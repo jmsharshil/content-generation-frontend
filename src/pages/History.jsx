@@ -33,7 +33,7 @@ const History = () => {
 
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState('PUBLISHED');
 
   useEffect(() => {
     if (location.state?.topic) {
@@ -166,72 +166,24 @@ const History = () => {
 
         {/* Right: Results */}
         <div style={{ minWidth: 0 }}>
-          <div className="studio-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <div>
-              <h2 style={{ margin: 0 }}>Review & Approve</h2>
-              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>Select posts to publish to Meta.</p>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-
-              {/* Ad Promotion Toggle */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem 0.6rem', borderRadius: 'var(--radius-md)' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer', color: 'var(--color-text)' }}>
-                  <input type="checkbox" checked={promoteAsAd} onChange={(e) => setPromoteAsAd(e.target.checked)} style={{ accentColor: 'var(--color-primary)' }} />
-                  Promote as Ad
-                </label>
-                {promoteAsAd && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>$</span>
-                    <input
-                      type="number"
-                      value={adBudget}
-                      onChange={(e) => setAdBudget(parseFloat(e.target.value))}
-                      className="input-field"
-                      style={{ padding: '0.2rem', width: '60px', fontSize: '0.75rem', height: 'auto' }}
-                      min="1"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Platform Selector */}
-              <select
-                className="input-field"
-                value={publishPlatform}
-                onChange={(e) => setPublishPlatform(e.target.value)}
-                style={{ padding: '0.4rem', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(59,130,246,0.1)', color: 'var(--color-primary)', border: '1px solid rgba(59,130,246,0.3)' }}
-              >
-                <option value="facebook">Facebook</option>
-                <option value="instagram">Instagram</option>
-              </select>
-
-              {/* Search & Filter */}
+          <div className="studio-header" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              {/* Search */}
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <Search size={14} style={{ position: 'absolute', left: '8px', color: 'var(--color-text-muted)' }} />
+                <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--color-text-muted)' }} />
                 <input
                   type="text"
                   className="input-field"
-                  placeholder="Search..."
+                  placeholder="Search posts..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ paddingLeft: '28px', padding: '0.4rem 0.4rem 0.4rem 28px', width: '120px', fontSize: '0.75rem' }}
+                  style={{ paddingLeft: '32px', paddingRight: '12px', width: '200px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-glass-border)' }}
                 />
               </div>
-              <select
-                className="input-field"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                style={{ padding: '0.4rem', fontSize: '0.75rem' }}
-              >
-                <option value="ALL">All Status</option>
-                <option value="DRAFT">Drafts</option>
-                <option value="REVIEW">Review</option>
-                <option value="PUBLISHED">Published</option>
-              </select>
 
-              <button className="btn btn-secondary" onClick={fetchPosts} title="Refresh"><RefreshCw size={13} /></button>
-              <button className="btn btn-primary" onClick={handlePublish} style={{ background: 'var(--gradient-primary)', border: 'none' }}><Send size={13} /> Publish</button>
+              <button className="btn btn-secondary" onClick={fetchPosts} title="Refresh" style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-glass-border)' }}>
+                <RefreshCw size={14} color="var(--color-text-muted)" />
+              </button>
             </div>
           </div>
 
@@ -283,19 +235,15 @@ const History = () => {
                   {/* Post Header */}
                   <div style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.6rem 1rem', borderBottom: '1px solid var(--color-border)',
-                    background: 'rgba(0,0,0,0.15)'
+                    padding: '1rem', borderBottom: '1px solid var(--color-glass-border)',
+                    background: 'rgba(0,0,0,0.1)'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <div style={{ cursor: 'pointer', display: 'flex' }} onClick={() => toggleSelect(post.id)}>
-                        {post.selected ? <CheckSquare size={15} color="var(--color-primary)" /> : <Square size={15} color="var(--color-text-muted)" />}
-                      </div>
-
-                      {/* Platform icon removed from here, moved to modal */}                      <div>
-                        <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                          {post.topic || 'Untitled Post'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                      <div>
+                        <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                          {post.topic || 'Published Post'}
                         </p>
-                        <p style={{ margin: 0, fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+                        <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
                           {timeAgo}
                         </p>
                       </div>

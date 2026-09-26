@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
-import { Sparkles, Calendar as CalendarIcon, Check, Clock, Copy, X, Edit2 } from 'lucide-react';
+import { Sparkles, Calendar as CalendarIcon, Check, Clock, Copy, X, Edit2, Image as ImageIcon, Video as VideoIcon, List } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
 import { useToast } from '../context/ToastContext';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -21,6 +21,7 @@ const ContentStudio = () => {
     return saved ? JSON.parse(saved) : [];
   });
   const [selectedOptionIdx, setSelectedOptionIdx] = useState(null);
+  const [activeTab, setActiveTab] = useState('all');
   
   // Scheduling State
   const [scheduleDate, setScheduleDate] = useState('');
@@ -321,7 +322,11 @@ const ContentStudio = () => {
               {/* Large Image Preview for Selected Option */}
               {selectedOptionIdx !== null && mediaUrls[selectedOptionIdx] && (
                 <div className="animate-fade-in" style={{ marginBottom: '0.5rem', textAlign: 'center' }}>
-                  <img src={mediaUrls[selectedOptionIdx].startsWith('http') ? mediaUrls[selectedOptionIdx] : `${import.meta.env.VITE_API_URL}${mediaUrls[selectedOptionIdx]}`} alt="Selected Preview" style={{ maxWidth: '100%', maxHeight: '450px', borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 30px rgba(0,0,0,0.3)', border: '1px solid var(--color-glass-border)', objectFit: 'contain' }} />
+                  {mediaUrls[selectedOptionIdx].match(/\.(mp4|webm|ogg)$/i) ? (
+                    <video src={mediaUrls[selectedOptionIdx].startsWith('http') ? mediaUrls[selectedOptionIdx] : `${import.meta.env.VITE_API_URL}${mediaUrls[selectedOptionIdx]}`} controls style={{ maxWidth: '100%', maxHeight: '450px', borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 30px rgba(0,0,0,0.3)', border: '1px solid var(--color-glass-border)', objectFit: 'contain' }} />
+                  ) : (
+                    <img src={mediaUrls[selectedOptionIdx].startsWith('http') ? mediaUrls[selectedOptionIdx] : `${import.meta.env.VITE_API_URL}${mediaUrls[selectedOptionIdx]}`} alt="Selected Preview" style={{ maxWidth: '100%', maxHeight: '450px', borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 30px rgba(0,0,0,0.3)', border: '1px solid var(--color-glass-border)', objectFit: 'contain' }} />
+                  )}
                 </div>
               )}
               
@@ -366,7 +371,41 @@ const ContentStudio = () => {
               {/* Options List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.35rem', fontWeight: 600 }}>Select an Option</h2>
-                {generatedOptions.map((opt, idx) => (
+                
+                {/* Media Type Tabs */}
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <button 
+                    className={`btn ${activeTab === 'all' ? 'btn-primary' : 'btn-secondary'}`} 
+                    onClick={() => setActiveTab('all')}
+                    style={{ flex: 1, display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    <List size={16} /> All
+                  </button>
+                  <button 
+                    className={`btn ${activeTab === 'image' ? 'btn-primary' : 'btn-secondary'}`} 
+                    onClick={() => setActiveTab('image')}
+                    style={{ flex: 1, display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    <ImageIcon size={16} /> Images
+                  </button>
+                  <button 
+                    className={`btn ${activeTab === 'video' ? 'btn-primary' : 'btn-secondary'}`} 
+                    onClick={() => setActiveTab('video')}
+                    style={{ flex: 1, display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    <VideoIcon size={16} /> Videos
+                  </button>
+                </div>
+
+                {generatedOptions.map((opt, idx) => {
+                  const mediaUrl = mediaUrls[idx] || '';
+                  const isVideo = mediaUrl.match(/\.(mp4|webm|ogg)$/i);
+                  const isImage = mediaUrl && !isVideo;
+                  
+                  if (activeTab === 'image' && !isImage) return null;
+                  if (activeTab === 'video' && !isVideo) return null;
+
+                  return (
                   <div key={idx} className="glass-panel hover-card animate-slide-up" style={{ 
                     padding: '1.75rem', 
                     border: selectedOptionIdx === idx ? '2px solid var(--color-primary)' : '1px solid var(--color-glass-border)',
@@ -382,7 +421,11 @@ const ContentStudio = () => {
                       </div>
                       {mediaUrls[idx] && (
                         <div style={{ flexShrink: 0, width: '140px', height: '140px' }}>
-                          <img src={mediaUrls[idx].startsWith('http') ? mediaUrls[idx] : `${import.meta.env.VITE_API_URL}${mediaUrls[idx]}`} alt="Generated" style={{ width: '100%', height: '100%', borderRadius: 'var(--radius-md)', objectFit: 'cover', border: '1px solid var(--color-glass-border)' }} />
+                          {mediaUrls[idx].match(/\.(mp4|webm|ogg)$/i) ? (
+                            <video src={mediaUrls[idx].startsWith('http') ? mediaUrls[idx] : `${import.meta.env.VITE_API_URL}${mediaUrls[idx]}`} style={{ width: '100%', height: '100%', borderRadius: 'var(--radius-md)', objectFit: 'cover', border: '1px solid var(--color-glass-border)' }} muted loop autoPlay playsInline />
+                          ) : (
+                            <img src={mediaUrls[idx].startsWith('http') ? mediaUrls[idx] : `${import.meta.env.VITE_API_URL}${mediaUrls[idx]}`} alt="Generated" style={{ width: '100%', height: '100%', borderRadius: 'var(--radius-md)', objectFit: 'cover', border: '1px solid var(--color-glass-border)' }} />
+                          )}
                         </div>
                       )}
                     </div>
@@ -392,7 +435,7 @@ const ContentStudio = () => {
                       </button>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             </>
           ) : (
@@ -492,11 +535,19 @@ const ContentStudio = () => {
                   
                   {post.media_url && (
                     <div style={{ width: '100%', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--color-glass-border)' }}>
-                      <img 
-                        src={post.media_url.startsWith('http') ? post.media_url : `${import.meta.env.VITE_API_URL}${post.media_url}`} 
-                        alt="Post Image" 
-                        style={{ width: '100%', maxHeight: '250px', objectFit: 'contain', background: 'rgba(0,0,0,0.2)' }} 
-                      />
+                      {post.media_url.match(/\.(mp4|webm|ogg)$/i) ? (
+                        <video 
+                          src={post.media_url.startsWith('http') ? post.media_url : `${import.meta.env.VITE_API_URL}${post.media_url}`} 
+                          controls
+                          style={{ width: '100%', maxHeight: '250px', objectFit: 'contain', background: 'rgba(0,0,0,0.2)' }} 
+                        />
+                      ) : (
+                        <img 
+                          src={post.media_url.startsWith('http') ? post.media_url : `${import.meta.env.VITE_API_URL}${post.media_url}`} 
+                          alt="Post Image" 
+                          style={{ width: '100%', maxHeight: '250px', objectFit: 'contain', background: 'rgba(0,0,0,0.2)' }} 
+                        />
+                      )}
                     </div>
                   )}
                   

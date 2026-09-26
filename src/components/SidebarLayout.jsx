@@ -12,7 +12,7 @@ const SidebarLayout = ({ children, title }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [businessName, setBusinessName] = useState(() => localStorage.getItem('business_name') || 'JMS Automation');
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('user_email') || '');
-  
+
   const sidebarWidth = isCollapsed ? '64px' : '200px';
 
   React.useEffect(() => {
@@ -94,7 +94,7 @@ const SidebarLayout = ({ children, title }) => {
 
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           onClick={() => setSidebarOpen(false)}
           style={{
             position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
@@ -105,10 +105,10 @@ const SidebarLayout = ({ children, title }) => {
       )}
 
       {/* Sidebar */}
-      <div 
+      <div
         className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}
-        style={{ 
-          width: sidebarWidth, 
+        style={{
+          width: sidebarWidth,
           background: 'var(--color-bg-secondary)',
           borderRight: '1px solid var(--color-border)',
           display: 'flex',
@@ -121,7 +121,7 @@ const SidebarLayout = ({ children, title }) => {
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0', marginBottom: '1.25rem', alignItems: 'center' }}>
-          
+
           {/* Top Row: Toggle Button */}
           <div style={{ width: '100%', display: 'flex', justifyContent: isCollapsed ? 'center' : 'flex-end', padding: isCollapsed ? '0' : '0 0.75rem' }}>
             <button
@@ -140,13 +140,13 @@ const SidebarLayout = ({ children, title }) => {
 
           {/* Bottom Row: Logo (Always Centered) */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '38px', width: '100%' }}>
-            <img 
-              src="https://hrmsknowcraftstorage.blob.core.windows.net/media/JMS.png" 
-              alt="JMS Logo" 
+            <img
+              src="https://hrmsknowcraftstorage.blob.core.windows.net/media/JMS.png"
+              alt="JMS Logo"
               style={{ height: isCollapsed ? '24px' : '38px', objectFit: 'contain', transition: 'all 0.25s' }}
             />
           </div>
-            
+
           {/* Close button for mobile */}
           <button
             className="sidebar-close-btn"
@@ -208,14 +208,14 @@ const SidebarLayout = ({ children, title }) => {
               </div>
             </div>
           )}
-          
+
           <div style={{ height: '1px', background: 'var(--color-border)', margin: '0.5rem 0' }}></div>
-          
-          <button 
+
+          <button
             onClick={handleLogout}
             title={isCollapsed ? "Logout" : ""}
-            style={{ 
-              display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '0.6rem', 
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '0.6rem',
               color: 'var(--color-text-muted)', fontSize: '0.8rem',
               padding: isCollapsed ? '0.6rem 0' : '0.45rem 0.75rem', background: 'none', border: 'none',
               cursor: 'pointer', width: '100%', borderRadius: 'var(--radius-md)',
@@ -233,7 +233,7 @@ const SidebarLayout = ({ children, title }) => {
         <header style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             {/* Hamburger button for mobile */}
-            <button 
+            <button
               className="hamburger-btn"
               onClick={() => setSidebarOpen(true)}
               style={{
@@ -245,8 +245,8 @@ const SidebarLayout = ({ children, title }) => {
             </button>
             <h1 style={{ margin: 0 }}>{title}</h1>
           </div>
-          <button 
-            className="btn btn-secondary" 
+          <button
+            className="btn btn-secondary"
             style={{ padding: '0.35rem', borderRadius: '50%' }}
             onClick={toggleTheme}
           >

@@ -357,11 +357,19 @@ const History = () => {
                   
                   {viewingPost.media_url && (
                     <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--color-glass-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
-                      <img
-                        src={viewingPost.media_url.startsWith('http') ? viewingPost.media_url : `${import.meta.env.VITE_API_URL}${viewingPost.media_url}`}
-                        alt="AI Generated"
-                        style={{ width: '100%', height: 'auto', display: 'block' }}
-                      />
+                      {viewingPost.media_url.match(/\.(mp4|webm|ogg)$/i) ? (
+                        <video
+                          src={viewingPost.media_url.startsWith('http') ? viewingPost.media_url : `${import.meta.env.VITE_API_URL}${viewingPost.media_url}`}
+                          controls
+                          style={{ width: '100%', height: 'auto', display: 'block' }}
+                        />
+                      ) : (
+                        <img
+                          src={viewingPost.media_url.startsWith('http') ? viewingPost.media_url : `${import.meta.env.VITE_API_URL}${viewingPost.media_url}`}
+                          alt="AI Generated"
+                          style={{ width: '100%', height: 'auto', display: 'block' }}
+                        />
+                      )}
                     </div>
                   )}
                 </>

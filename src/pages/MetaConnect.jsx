@@ -15,49 +15,6 @@ const MetaConnect = () => {
   const [pageId, setPageId] = useState(null);
   const [pages, setPages] = useState([]);
   const [selectedPage, setSelectedPage] = useState('');
-  const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
-
-  // Auto Reply State
-  const [autoReplyText, setAutoReplyText] = useState('');
-  const [isAutoReplyActive, setIsAutoReplyActive] = useState(false);
-  const [isSavingReply, setIsSavingReply] = useState(false);
-
-  // Fetch Auto Reply Settings
-  useEffect(() => {
-    const fetchAutoReply = async () => {
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/meta/auto-reply-settings/`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setAutoReplyText(data.reply_text || '');
-          setIsAutoReplyActive(data.is_active || false);
-        }
-      } catch (error) { console.error(error); }
-    };
-    fetchAutoReply();
-  }, []);
-
-  const saveAutoReply = async () => {
-    setIsSavingReply(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/meta/auto-reply-settings/`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` 
-        },
-        body: JSON.stringify({ reply_text: autoReplyText, is_active: isAutoReplyActive })
-      });
-      if (res.ok) showToast('Auto-Reply settings saved!', 'success');
-      else showToast('Failed to save settings', 'error');
-    } catch (error) {
-      showToast('Network error', 'error');
-    } finally {
-      setIsSavingReply(false);
-    }
-  };
 
   const fetchMetaStatus = async () => {
     try {
@@ -165,7 +122,7 @@ const MetaConnect = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         },
-        body: JSON.stringify({ page_id: selectedPage, auto_reply: autoReplyEnabled })
+        body: JSON.stringify({ page_id: selectedPage })
       });
       if (res.ok) {
         hideLoader();
@@ -233,11 +190,6 @@ const MetaConnect = () => {
               ))}
             </select>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--color-text)', marginBottom: '1rem', background: 'rgba(255,255,255,0.05)', padding: '0.5rem', borderRadius: 'var(--radius-md)' }}>
-              <input type="checkbox" checked={autoReplyEnabled} onChange={(e) => setAutoReplyEnabled(e.target.checked)} style={{ accentColor: 'var(--color-primary)' }} />
-              Enable Auto-Reply
-            </label>
-
             <button 
               className="btn btn-primary" 
               onClick={handleSavePage}
@@ -260,59 +212,7 @@ const MetaConnect = () => {
           </button>
         )}
 
-        {/* Auto Reply Settings Panel */}
-        <div className="glass-panel" style={{ marginTop: '1.5rem', textAlign: 'left' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div>
-              <h3 style={{ margin: 0 }}>Smart Auto-Reply</h3>
-              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
-                Reply to incoming comments on FB and IG.
-              </p>
-            </div>
-            
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-              <div style={{ 
-                width: '40px', height: '20px', background: isAutoReplyActive ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)',
-                borderRadius: '20px', position: 'relative', transition: 'all 0.3s'
-              }}>
-                <div style={{
-                  width: '16px', height: '16px', background: 'white', borderRadius: '50%',
-                  position: 'absolute', top: '2px', left: isAutoReplyActive ? '22px' : '2px', transition: 'all 0.3s'
-                }} />
-              </div>
-              <input 
-                type="checkbox" 
-                hidden 
-                checked={isAutoReplyActive} 
-                onChange={(e) => setIsAutoReplyActive(e.target.checked)} 
-              />
-            </label>
-          </div>
 
-          <div style={{ opacity: isAutoReplyActive ? 1 : 0.5, transition: 'opacity 0.3s', pointerEvents: isAutoReplyActive ? 'auto' : 'none' }}>
-            <label className="label">Auto-Reply Message</label>
-            <textarea 
-              className="input-field" 
-              rows="3" 
-              placeholder="e.g. Thanks for your comment! We will DM you shortly."
-              value={autoReplyText} 
-              onChange={(e) => setAutoReplyText(e.target.value)}
-              style={{ width: '100%', resize: 'vertical', marginBottom: '1rem' }}
-            />
-            
-            <button 
-              className="btn btn-primary" 
-              onClick={saveAutoReply} 
-              disabled={isSavingReply}
-              style={{ width: '100%', justifyContent: 'center' }}
-            >
-              {isSavingReply ? 'Saving...' : 'Save Settings'}
-            </button>
-          </div>
-        </div>
-
-
-        
       </div>
     </div>
   );

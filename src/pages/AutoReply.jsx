@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
 import { useLoader } from '../context/LoaderContext';
 import { useToast } from '../context/ToastContext';
-import { MessageSquareReply, Heart, Send, AlertCircle, CheckCircle2, XCircle, History } from 'lucide-react';
+import { MessageSquareReply, Heart, Send, AlertCircle, CheckCircle2, XCircle, History, Image, AlignLeft } from 'lucide-react';
 
 const ToggleSwitch = ({ checked, onChange }) => (
   <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-    <div style={{ 
+    <div style={{
       width: '44px', height: '22px', background: checked ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)',
       borderRadius: '22px', position: 'relative', transition: 'all 0.3s'
     }}>
@@ -46,13 +46,28 @@ const TabButton = ({ id, activeTab, setActiveTab, icon, label, count }) => (
   </button>
 );
 
+const RenderComment = ({ text }) => {
+  if (!text) return <span>No comment text</span>;
+  const match = text.match(/\[MEDIA:(.+?)\]/);
+  if (match) {
+    const textPart = text.replace(match[0], '').trim();
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.2rem' }}>
+        {textPart && <span>{textPart}</span>}
+        <img src={match[1]} alt="Sticker/GIF" style={{ maxWidth: '100px', borderRadius: '8px' }} />
+      </div>
+    );
+  }
+  return <span>{text}</span>;
+};
+
 const AutomationCard = ({ icon, iconBg, title, subtitle, heartColor, checked, onToggle, textValue, onTextChange, placeholder, infoText }) => (
   <div className="glass-panel" style={{ padding: '1.5rem' }}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <div style={{ 
-          width: '42px', height: '42px', borderRadius: '12px', 
-          background: iconBg, 
+        <div style={{
+          width: '42px', height: '42px', borderRadius: '12px',
+          background: iconBg,
           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
         }}>
           {icon}
@@ -70,16 +85,16 @@ const AutomationCard = ({ icon, iconBg, title, subtitle, heartColor, checked, on
 
     <div style={{ opacity: checked ? 1 : 0.4, transition: 'opacity 0.3s', pointerEvents: checked ? 'auto' : 'none' }}>
       <label className="label">Message Template</label>
-      <textarea 
-        className="input-field" 
-        rows="3" 
+      <textarea
+        className="input-field"
+        rows="3"
         placeholder={placeholder}
-        value={textValue} 
+        value={textValue}
         onChange={onTextChange}
         style={{ width: '100%', resize: 'vertical', fontSize: '0.85rem', padding: '0.75rem' }}
       />
       {infoText && (
-        <div style={{ 
+        <div style={{
           display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginTop: '0.75rem',
           padding: '0.65rem 0.85rem', borderRadius: '8px',
           background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)'
@@ -92,37 +107,182 @@ const AutomationCard = ({ icon, iconBg, title, subtitle, heartColor, checked, on
   </div>
 );
 
-const fbIcon = <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 2H15C13.6739 2 12.4021 2.52678 11.4645 3.46447C10.5268 4.40215 10 5.67392 10 7V10H7V14H10V22H14V14H17L18 10H14V7C14 6.73478 14.1054 6.48043 14.2929 6.29289C14.4804 6.10536 14.7348 6 15 6H18V2Z" stroke="#1877F2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const igIcon = <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="#E4405F" strokeWidth="2"/><circle cx="12" cy="12" r="5" stroke="#E4405F" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="#E4405F"/></svg>;
+const fbIcon = <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 2H15C13.6739 2 12.4021 2.52678 11.4645 3.46447C10.5268 4.40215 10 5.67392 10 7V10H7V14H10V22H14V14H17L18 10H14V7C14 6.73478 14.1054 6.48043 14.2929 6.29289C14.4804 6.10536 14.7348 6 15 6H18V2Z" stroke="#1877F2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+const igIcon = <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="#E4405F" strokeWidth="2" /><circle cx="12" cy="12" r="5" stroke="#E4405F" strokeWidth="2" /><circle cx="17.5" cy="6.5" r="1.5" fill="#E4405F" /></svg>;
+
+const PostGroupedHistory = ({ logs, logRenderer, icon, emptyMessage }) => {
+  const [activePostId, setActivePostId] = useState(null);
+  const [postDetailsCache, setPostDetailsCache] = useState({});
+
+  const logsByPost = useMemo(() => {
+    return logs.reduce((acc, log) => {
+      const pid = log.post_id || 'Unknown Post';
+      if (!acc[pid]) acc[pid] = [];
+      acc[pid].push(log);
+      return acc;
+    }, {});
+  }, [logs]);
+
+  const postIds = Object.keys(logsByPost);
+
+  useEffect(() => {
+    if (!activePostId && postIds.length > 0) {
+      setActivePostId(postIds[0]);
+    }
+  }, [postIds, activePostId]);
+
+  // Fetch Post Details from new Backend Endpoint
+  useEffect(() => {
+    postIds.forEach(async (pid) => {
+      if (pid === 'Unknown Post' || postDetailsCache[pid]) return;
+      try {
+        const firstLog = logsByPost[pid][0];
+        const platform = firstLog?.platform || 'instagram';
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/meta/post-details/${pid}/?platform=${platform}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // Extract the image and link depending on FB or IG format
+          const imageUrl = data.media_url || data.thumbnail_url || data.full_picture || data.picture;
+          const linkUrl = data.permalink || data.permalink_url;
+          const mediaType = data.media_type || (imageUrl?.match(/\.(mp4|webm|ogg|mov)/i) ? 'VIDEO' : 'IMAGE');
+          
+          setPostDetailsCache(prev => ({
+            ...prev,
+            [pid]: { image: imageUrl, link: linkUrl, mediaType }
+          }));
+        }
+      } catch (e) {
+        console.error("Failed to fetch post details for", pid);
+      }
+    });
+  }, [postIds]); // Fetch whenever new post IDs appear
+
+  if (logs.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', opacity: 0.4, marginBottom: '0.75rem' }}>{icon}</div>
+        <p style={{ color: 'var(--color-text-muted)', margin: 0, fontSize: '0.9rem' }}>{emptyMessage}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Swipe Swipe UI for Posts */}
+      <div style={{ 
+        display: 'flex', overflowX: 'auto', paddingBottom: '1rem', marginBottom: '1rem',
+        scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none', msOverflowStyle: 'none'
+      }}>
+        <style>{`.hide-scroll::-webkit-scrollbar { display: none; }`}</style>
+        <div className="hide-scroll" style={{ display: 'flex', gap: '1rem', width: 'max-content' }}>
+          {postIds.map(pid => {
+            const details = postDetailsCache[pid];
+            return (
+              <div 
+                key={pid}
+                onClick={() => {
+                  if (activePostId === pid && details?.link) {
+                    window.open(details.link, '_blank'); // Open post on double-click/tap
+                  }
+                  setActivePostId(pid);
+                }}
+                style={{
+                  scrollSnapAlign: 'start', flexShrink: 0,
+                  width: '140px', height: '150px', borderRadius: '12px',
+                  background: activePostId === pid ? 'var(--color-primary)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${activePostId === pid ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)'}`,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
+                  cursor: 'pointer', transition: 'all 0.2s', overflow: 'hidden',
+                  boxShadow: activePostId === pid ? '0 4px 12px rgba(59,130,246,0.3)' : 'none',
+                  position: 'relative'
+                }}
+              >
+                {/* Thumbnail Image */}
+                <div style={{ 
+                  width: '100%', height: '80px', background: 'rgba(255,255,255,0.05)', 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderBottom: `1px solid ${activePostId === pid ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)'}`
+                }}>
+                  {details?.image ? (
+                    details.mediaType === 'VIDEO' || details.image.match(/\.(mp4|webm|ogg|mov)/i) ? (
+                      <video src={details.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop autoPlay playsInline />
+                    ) : (
+                      <img src={details.image} alt="Post thumbnail" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )
+                  ) : (
+                    pid === 'Unknown Post' || !details ? (
+                      <Image size={24} color={activePostId === pid ? '#fff' : 'var(--color-text-muted)'} />
+                    ) : (
+                      <AlignLeft size={24} color={activePostId === pid ? '#fff' : 'var(--color-text-muted)'} />
+                    )
+                  )}
+                </div>
+
+                <div style={{ padding: '0.5rem', textAlign: 'center', width: '100%' }}>
+                  <p style={{ margin: 0, fontSize: '0.65rem', color: activePostId === pid ? '#fff' : 'var(--color-text)', fontWeight: 600, wordBreak: 'break-all', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {pid === 'Unknown Post' ? 'Unknown Post' : pid}
+                  </p>
+                  <span style={{ fontSize: '0.65rem', color: activePostId === pid ? 'rgba(255,255,255,0.8)' : 'var(--color-text-muted)', marginTop: '0.2rem', display: 'block' }}>
+                    {logsByPost[pid].length} Logs
+                  </span>
+                  {details?.link && (
+                    <span style={{ fontSize: '0.55rem', color: activePostId === pid ? '#fff' : 'var(--color-primary)', marginTop: '0.2rem', display: 'block', textDecoration: 'underline' }}>
+                      Click again to view
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Logs List */}
+      <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <History size={16} color="var(--color-primary)" />
+        History for {activePostId === 'Unknown Post' ? 'Unknown Post' : 'Selected Post'}
+      </h4>
+      
+      {activePostId && logsByPost[activePostId] && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+           {logsByPost[activePostId].map(log => logRenderer(log))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AutoReply = () => {
   const { showLoader, hideLoader } = useLoader();
   const { showToast } = useToast();
-  
+
   // Facebook: Auto-reply to comments
   const [fbReplyText, setFbReplyText] = useState('');
   const [fbAutoReplyActive, setFbAutoReplyActive] = useState(false);
-  
+
   // Instagram: Auto-reply to comments
   const [igReplyText, setIgReplyText] = useState('');
   const [igAutoReplyActive, setIgAutoReplyActive] = useState(false);
-  
+
   // Facebook DM on Like
   const [fbDmText, setFbDmText] = useState('');
   const [fbDmOnLikeActive, setFbDmOnLikeActive] = useState(false);
-  
+
   // Instagram DM on Like
   const [igDmText, setIgDmText] = useState('');
   const [igDmOnLikeActive, setIgDmOnLikeActive] = useState(false);
-  
+
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // Logs
   const [autoReplyLogs, setAutoReplyLogs] = useState([]);
   const [autoDmLogs, setAutoDmLogs] = useState([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [isLoadingDmLogs, setIsLoadingDmLogs] = useState(true);
-  
+
   // Active tab
   const [activeTab, setActiveTab] = useState('settings');
 
@@ -145,7 +305,7 @@ const AutoReply = () => {
         }
       } catch (error) { console.error(error); }
     };
-    
+
     const fetchAutoReplyLogs = async () => {
       setIsLoadingLogs(true);
       try {
@@ -196,9 +356,9 @@ const AutoReply = () => {
 
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/meta/auto-reply-settings/`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` 
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         },
         body: JSON.stringify(payload)
       });
@@ -222,7 +382,7 @@ const AutoReply = () => {
   return (
     <SidebarLayout title="Automation Settings">
       <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        
+
         {/* Tab Navigation */}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <TabButton id="settings" activeTab={activeTab} setActiveTab={setActiveTab} icon={<MessageSquareReply size={16} />} label="Settings" />
@@ -273,19 +433,19 @@ const AutoReply = () => {
               placeholder="e.g. Hey! Thanks for commenting &#10084;&#65039; We'll get back to you soon!"
             />
 
-            {/* Section Header: DM on Like */}
+            {/* Section Header: DM on Comment */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Heart size={18} color="#ef4444" fill="#ef4444" />
-              <h2 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--color-text)' }}>Auto DM on Like</h2>
+              <MessageSquareReply size={18} color="#3b82f6" />
+              <h2 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--color-text)' }}>Auto DM on Comment</h2>
             </div>
 
-            {/* Facebook DM on Like */}
+            {/* Facebook DM on Comment */}
             <AutomationCard
               icon={fbIcon}
               iconBg="linear-gradient(135deg, rgba(24,119,242,0.15), rgba(59,130,246,0.1))"
-              title="Facebook — DM on Like"
-              subtitle="Send a DM when someone likes your Facebook post"
-              heartColor="#ef4444"
+              title="Facebook Auto-DM (On Comment)"
+              subtitle="Send a private DM to users who comment on your Facebook posts"
+              heartColor="#3b82f6"
               checked={fbDmOnLikeActive}
               onToggle={(e) => {
                 const checked = e.target.checked;
@@ -294,15 +454,15 @@ const AutoReply = () => {
               }}
               textValue={fbDmText}
               onTextChange={(e) => setFbDmText(e.target.value)}
-              placeholder="e.g. Hey! Thanks for liking our post! &#128591; Here's a special offer..."
+              placeholder="e.g. Hey! Thanks for your comment! Here is the link..."
             />
 
-            {/* Instagram DM on Like */}
+            {/* Instagram DM on Comment */}
             <AutomationCard
               icon={igIcon}
               iconBg="linear-gradient(135deg, rgba(228,64,95,0.15), rgba(252,175,69,0.1))"
-              title="Instagram — DM on Like"
-              subtitle="Send a DM when someone likes your Instagram post"
+              title="Instagram Auto-DM (On Comment)"
+              subtitle="Send a private DM to users who comment on your posts"
               heartColor="#E4405F"
               checked={igDmOnLikeActive}
               onToggle={(e) => {
@@ -312,14 +472,13 @@ const AutoReply = () => {
               }}
               textValue={igDmText}
               onTextChange={(e) => setIgDmText(e.target.value)}
-              placeholder="e.g. Hey! Thanks for the love &#10084;&#65039; Check out our latest..."
-              infoText="Instagram likes are polled automatically in the background every 5 minutes."
+              placeholder="e.g. Thanks for your comment! Here is the link you requested..."
             />
 
             {/* Save All Button */}
-            <button 
-              className="btn btn-primary" 
-              onClick={() => saveSettings()} 
+            <button
+              className="btn btn-primary"
+              onClick={() => saveSettings()}
               disabled={isSaving}
               style={{ width: '100%', justifyContent: 'center', padding: '0.85rem', fontSize: '0.95rem', borderRadius: '10px' }}
             >
@@ -349,15 +508,18 @@ const AutoReply = () => {
                 <p style={{ color: 'var(--color-text-muted)', margin: 0, fontSize: '0.9rem' }}>No auto-replies sent yet.</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {autoReplyLogs.map((log) => (
-                  <div key={log.id || Math.random()} style={{ 
-                    padding: '0.85rem 1rem', borderRadius: '8px', 
+              <PostGroupedHistory 
+                logs={autoReplyLogs}
+                icon={<MessageSquareReply size={32} />}
+                emptyMessage="No auto-replies sent yet."
+                logRenderer={(log) => (
+                  <div key={log.id || Math.random()} style={{
+                    padding: '0.85rem 1rem', borderRadius: '8px',
                     background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.4rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ 
+                        <span style={{
                           padding: '0.15rem 0.5rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600,
                           background: log.platform?.toLowerCase() === 'facebook' ? 'rgba(24,119,242,0.15)' : 'rgba(228,64,95,0.15)',
                           color: log.platform?.toLowerCase() === 'facebook' ? '#1877F2' : '#E4405F'
@@ -368,15 +530,15 @@ const AutoReply = () => {
                       </div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{formatDate(log.created_at)}</span>
                     </div>
-                    <p style={{ margin: '0.3rem 0', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                      {log.comment_text || 'No comment text'}
-                    </p>
+                    <div style={{ margin: '0.3rem 0', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                      <RenderComment text={log.comment_text} />
+                    </div>
                     <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                       <MessageSquareReply size={12} /> {log.reply_text}
                     </p>
                   </div>
-                ))}
-              </div>
+                )}
+              />
             )}
           </div>
         )}
@@ -403,15 +565,18 @@ const AutoReply = () => {
                 <p style={{ color: 'var(--color-text-muted)', margin: '0.5rem 0 0', fontSize: '0.8rem' }}>Enable "DM on Like" in Settings and wait for likes!</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {autoDmLogs.map((log) => (
-                  <div key={log.id || Math.random()} style={{ 
-                    padding: '0.85rem 1rem', borderRadius: '8px', 
+              <PostGroupedHistory 
+                logs={autoDmLogs}
+                icon={<Heart size={32} />}
+                emptyMessage="No auto DMs sent yet."
+                logRenderer={(log) => (
+                  <div key={log.id || Math.random()} style={{
+                    padding: '0.85rem 1rem', borderRadius: '8px',
                     background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.4rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ 
+                        <span style={{
                           padding: '0.15rem 0.5rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600,
                           background: log.platform?.toLowerCase() === 'facebook' ? 'rgba(24,119,242,0.15)' : 'rgba(228,64,95,0.15)',
                           color: log.platform?.toLowerCase() === 'facebook' ? '#1877F2' : '#E4405F'
@@ -427,23 +592,45 @@ const AutoReply = () => {
                       </div>
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{formatDate(log.created_at)}</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.3rem' }}>
-                      <Heart size={12} color="#ef4444" fill="#ef4444" />
-                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Liked your post</span>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
+                      {log.trigger_type === 'comment' ? (
+                        <MessageSquareReply size={12} color="#3b82f6" />
+                      ) : (
+                        <Heart size={12} color="#ef4444" fill="#ef4444" />
+                      )}
+                      
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                        {log.trigger_type === 'comment' ? (log.comment_text ? <RenderComment text={log.comment_text} /> : 'Commented on your post') : 'Liked your post'}
+                      </div>
+                      
                       {log.trigger_type && (
                         <span style={{ 
                           padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem',
-                          background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontWeight: 500
+                          background: log.trigger_type === 'comment' ? 'rgba(59,130,246,0.1)' : 'rgba(239,68,68,0.1)', 
+                          color: log.trigger_type === 'comment' ? '#3b82f6' : '#ef4444', 
+                          fontWeight: 500
                         }}>
                           {log.trigger_type}
                         </span>
                       )}
+                      
+                      {log.post_id && (
+                        <span style={{ 
+                          fontSize: '0.7rem', color: 'var(--color-text-muted)', opacity: 0.7, 
+                          marginLeft: 'auto', background: 'rgba(255,255,255,0.05)', 
+                          padding: '0.1rem 0.4rem', borderRadius: '4px', fontFamily: 'monospace' 
+                        }}>
+                          Post ID: {log.post_id}
+                        </span>
+                      )}
                     </div>
+                    
                     <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                       <Send size={12} /> {log.dm_text}
                     </p>
                     {log.status === 'failed' && log.error_message && (
-                      <div style={{ 
+                      <div style={{
                         marginTop: '0.5rem', padding: '0.4rem 0.6rem', borderRadius: '6px',
                         background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)',
                         fontSize: '0.75rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.3rem'
@@ -453,8 +640,8 @@ const AutoReply = () => {
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
+                )}
+              />
             )}
           </div>
         )}

@@ -3,8 +3,10 @@ import SidebarLayout from '../components/SidebarLayout';
 import { User, Building, Mail, Hash, Globe, Edit3, Save, X } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useLoader } from '../context/LoaderContext';
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const { showLoader, hideLoader } = useLoader();
   const [profile, setProfile] = useState(() => {
@@ -168,6 +170,29 @@ const Profile = () => {
     }
   };
 
+  const handleMetaConnect = async () => {
+    showLoader('Connecting to Meta...');
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/meta/auth-url/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        }
+      });
+      const data = await response.json();
+      if (data.auth_url) {
+        window.location.href = data.auth_url;
+      } else {
+        showToast("No valid URL from backend.", 'error');
+        hideLoader();
+      }
+    } catch (error) {
+      showToast('Could not fetch Meta login URL.', 'error');
+      hideLoader();
+    }
+  };
+
   return (
     <SidebarLayout title="Profile">
       <div className="glass-panel" style={{ maxWidth: '600px', margin: '0 auto' }}>
@@ -311,6 +336,26 @@ const Profile = () => {
                   </div>
                 )}
                 
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+              <div style={{ padding: '0.5rem', background: 'var(--color-bg-tertiary)', borderRadius: 'var(--radius-md)', marginTop: '4px' }}>
+                <Globe size={18} color="var(--color-text-muted)" />
+              </div>
+              <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Meta Account Connection</p>
+                  <p style={{ margin: 0, fontWeight: 500 }}>
+                    {metaInfo.isConnected ? 'Connected' : 'Not Connected'}
+                  </p>
+                </div>
+                <button 
+                  onClick={handleMetaConnect} 
+                  className="btn btn-primary" 
+                  style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
+                >
+                  {metaInfo.isConnected ? 'Reconnect Meta' : 'Connect Meta'}
+                </button>
               </div>
             </div>
           </div>

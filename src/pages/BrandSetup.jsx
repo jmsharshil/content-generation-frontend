@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
 import { Type, Users, Save, Upload, ChevronRight, ChevronLeft, Check, X, Building, Globe, FileText } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
@@ -43,7 +43,7 @@ const MultiTagInput = ({ options, value, onChange }) => {
               onClick={() => toggleTag(tag)}
               style={{
                 fontSize: '0.75rem', padding: '0.3rem 0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
-                background: isSelected ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)',
+                background: isSelected ? 'rgba(59,130,246,0.15)' : 'var(--color-bg-tertiary)',
                 border: `1px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
                 borderRadius: '1.5rem', cursor: 'pointer', transition: 'all 0.15s',
                 color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
@@ -74,7 +74,7 @@ const MultiTagInput = ({ options, value, onChange }) => {
         value={inputValue}
         onChange={e => setInputValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        style={{ fontSize: '0.75rem', padding: '0.4rem 0.6rem', width: '100%', background: 'rgba(255,255,255,0.02)' }}
+        style={{ fontSize: '0.75rem', padding: '0.4rem 0.6rem', width: '100%', background: 'var(--color-bg-tertiary)' }}
       />
     </div>
   );
@@ -562,7 +562,7 @@ const BrandSetup = () => {
                         <button 
                           onClick={(e) => handleDeleteAsset(e, assets.indexOf(asset), asset)}
                           style={{
-                            position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.6)', color: 'white', 
+                            position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.6)', color: '#ffffff', 
                             border: 'none', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', 
                             alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0
                           }}
@@ -629,7 +629,7 @@ const BrandSetup = () => {
                         <button 
                           onClick={(e) => handleDeleteAsset(e, assets.indexOf(asset), asset)}
                           style={{
-                            position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.6)', color: 'white', 
+                            position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.6)', color: '#ffffff', 
                             border: 'none', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', 
                             alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0
                           }}
@@ -720,3 +720,4 @@ const BrandSetup = () => {
 };
 
 export default BrandSetup;
+

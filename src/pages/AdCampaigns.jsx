@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
 import Stepper from '../components/Stepper';
-import { Rocket, RefreshCw, Send, Target, LayoutTemplate, Link as LinkIcon, DollarSign, Search, CheckCircle2 } from 'lucide-react';
+import { Rocket, RefreshCw, Target, LayoutTemplate, Link as LinkIcon, IndianRupee, CheckCircle2, List, Calendar, UploadCloud, X, Eye, Clock } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
 import { useToast } from '../context/ToastContext';
 import Skeleton from '../components/Skeleton';
@@ -10,9 +10,17 @@ const AdCampaigns = () => {
   const { showLoader, hideLoader } = useLoader();
   const { showToast } = useToast();
   
+  const [activeTab, setActiveTab] = useState('CREATE'); // 'CREATE' or 'HISTORY'
+  
   const [posts, setPosts] = useState([]);
   const [isFetchingPosts, setIsFetchingPosts] = useState(true);
   
+  const [history, setHistory] = useState([]);
+  const [isFetchingHistory, setIsFetchingHistory] = useState(false);
+  
+  // View Modal State
+  const [viewCampaign, setViewCampaign] = useState(null);
+
   // Wizard State
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -21,22 +29,102 @@ const AdCampaigns = () => {
   // Form State
   const [formData, setFormData] = useState({
     campaign_name: '',
-    budget: 10.00,
+    budget: 100.00,
     objective: 'OUTCOME_ENGAGEMENT',
     age_min: 18,
     age_max: 65,
     genders: [], // empty = all
     countries: ['IN'],
-    website_url: '',
+    website_url: 'https://jmstech.co/',
     call_to_action: 'LEARN_MORE',
     custom_creative: '',
-    custom_media_url: ''
+    custom_media_url: '',
+    status: 'PAUSED' // 'PAUSED' or 'ACTIVE'
   });
+
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  const handleGenerateAI = async () => {
+    if (!formData.campaign_name.trim()) {
+      showToast('Please enter a Campaign Name first to use AI.', 'info');
+      return;
+    }
+    
+    setIsGeneratingAI(true);
+    showToast('Generating AI Content... This may take a minute.', 'info');
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/generate/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: JSON.stringify({ topic: formData.campaign_name })
+      });
+      
+      if (!response.ok) throw new Error('Failed to generate content');
+      
+      const data = await response.json();
+      
+      if (data.options && data.options.length > 0) {
+        setFormData({
+          ...formData, 
+          custom_creative: data.options[0],
+          custom_media_url: data.media_urls?.[0] || formData.custom_media_url
+        });
+        showToast('AI Content Generated Successfully!', 'success');
+      } else {
+        showToast('No content generated.', 'error');
+      }
+    } catch (error) {
+      showToast('Failed to generate AI content.', 'error');
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+
+  const handleMediaUpload = async (e) => {
+    const file = e.target.files?.[0] || e.dataTransfer?.files?.[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+      showToast('Please upload an image or video file.', 'error');
+      return;
+    }
+
+    setIsUploadingMedia(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('name', file.name);
+    fd.append('asset_type', file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE');
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/assets/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: fd
+      });
+      
+      if (!response.ok) throw new Error('Upload failed');
+      
+      const data = await response.json();
+      setFormData({...formData, custom_media_url: data.file});
+      showToast(`${file.type.startsWith('video/') ? 'Video' : 'Image'} uploaded successfully!`, 'success');
+    } catch (error) {
+      showToast('Failed to upload media', 'error');
+    } finally {
+      setIsUploadingMedia(false);
+    }
+  };
 
   const fetchPosts = async () => {
     setIsFetchingPosts(true);
     try {
-      // Only fetch PUBLISHED posts for boosting
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/?status=PUBLISHED`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
       });
@@ -51,16 +139,39 @@ const AdCampaigns = () => {
     }
   };
 
+  const fetchHistory = async () => {
+    setIsFetchingHistory(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ads/history/`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setHistory(data.results || data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch history', error);
+    } finally {
+      setIsFetchingHistory(false);
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'HISTORY') {
+      fetchHistory();
+    }
+  }, [activeTab]);
 
   const handleBoostClick = (post) => {
     setSelectedPost(post);
     setFormData({
       ...formData,
       campaign_name: `Boost: ${post.topic || 'Post'}`,
-      website_url: `https://example.com/?utm_source=facebook&utm_medium=paid_social&utm_campaign=boost_${post.id}`
+      website_url: `https://jmstech.co/?utm_source=facebook&utm_medium=paid_social&utm_campaign=boost_${post.id}`
     });
     setCurrentStep(1);
     setIsWizardOpen(true);
@@ -71,7 +182,7 @@ const AdCampaigns = () => {
     setFormData({
       ...formData,
       campaign_name: 'Custom Ad Campaign',
-      website_url: 'https://example.com/?utm_source=facebook&utm_medium=paid_social&utm_campaign=custom_ad',
+      website_url: 'https://jmstech.co/?utm_source=facebook&utm_medium=paid_social&utm_campaign=custom_ad',
       custom_creative: '',
       custom_media_url: ''
     });
@@ -98,8 +209,9 @@ const AdCampaigns = () => {
       }
       
       hideLoader(); 
-      showToast('Campaign successfully launched! (Status: PAUSED)', 'success'); 
+      showToast(`Campaign successfully launched! (Status: ${formData.status})`, 'success'); 
       setIsWizardOpen(false);
+      setActiveTab('HISTORY');
     } catch (error) { 
       hideLoader(); 
       showToast(error.message, 'error'); 
@@ -149,9 +261,9 @@ const AdCampaigns = () => {
 
             <div>
               <label className="label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <DollarSign size={14} color="var(--color-success)" /> Daily Budget (USD) *
+                <IndianRupee size={14} color="var(--color-success)" /> Daily Budget (INR) *
               </label>
-              <input type="number" className="input-field" style={{ width: '100%', padding: '0.6rem' }} min="1"
+              <input type="number" className="input-field" style={{ width: '100%', padding: '0.6rem' }} min="80"
                 value={formData.budget} onChange={e => setFormData({...formData, budget: parseFloat(e.target.value)})} />
             </div>
           </div>
@@ -228,18 +340,56 @@ const AdCampaigns = () => {
               ) : (
                 <div style={{ display: 'grid', gap: '1rem', marginTop: '0.5rem' }}>
                   <div>
-                    <label className="label" style={{ fontSize: '0.7rem' }}>Ad Text / Caption *</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                      <label className="label" style={{ fontSize: '0.7rem', margin: 0 }}>Ad Text / Caption *</label>
+                      <button 
+                        type="button" 
+                        onClick={handleGenerateAI}
+                        disabled={isGeneratingAI}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(59,130,246,0.15)', color: 'var(--color-primary)', border: '1px solid rgba(59,130,246,0.3)', padding: '0.3rem 0.6rem', borderRadius: '4px', fontSize: '0.65rem', cursor: isGeneratingAI ? 'not-allowed' : 'pointer', opacity: isGeneratingAI ? 0.7 : 1, transition: 'all 0.2s' }}
+                      >
+                        <Rocket size={12} />
+                        {isGeneratingAI ? 'Generating...' : 'AI Generate'}
+                      </button>
+                    </div>
                     <textarea className="input-field" style={{ width: '100%', padding: '0.6rem', fontSize: '0.75rem', minHeight: '80px', resize: 'vertical' }}
                       placeholder="Write your ad copy here..."
                       value={formData.custom_creative} onChange={e => setFormData({...formData, custom_creative: e.target.value})} 
                     />
                   </div>
                   <div>
-                    <label className="label" style={{ fontSize: '0.7rem' }}>Image URL *</label>
-                    <input type="url" className="input-field" style={{ width: '100%', padding: '0.6rem', fontSize: '0.75rem' }}
-                      placeholder="https://example.com/image.jpg"
-                      value={formData.custom_media_url} onChange={e => setFormData({...formData, custom_media_url: e.target.value})} 
-                    />
+                    <label className="label" style={{ fontSize: '0.7rem' }}>Ad Media (Image/Video) *</label>
+                    {formData.custom_media_url ? (
+                      <div style={{ position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                        {(formData.custom_media_url.endsWith('.mp4') || formData.custom_media_url.endsWith('.webm') || formData.custom_media_url.endsWith('.mov')) ? (
+                          <video src={formData.custom_media_url.startsWith('http') ? formData.custom_media_url : `${import.meta.env.VITE_API_URL}${formData.custom_media_url}`} style={{ width: '100%', display: 'block' }} controls autoPlay muted loop />
+                        ) : (
+                          <img src={formData.custom_media_url.startsWith('http') ? formData.custom_media_url : `${import.meta.env.VITE_API_URL}${formData.custom_media_url}`} alt="Ad Creative" style={{ width: '100%', display: 'block' }} />
+                        )}
+                        <button 
+                          onClick={(e) => { e.preventDefault(); setFormData({...formData, custom_media_url: ''}); }}
+                          style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', color: '#ffffff', border: 'none', borderRadius: '50%', padding: '0.3rem', cursor: 'pointer' }}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div 
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => { e.preventDefault(); handleMediaUpload(e); }}
+                        style={{ border: '2px dashed var(--color-border)', borderRadius: 'var(--radius-md)', padding: '2rem', textAlign: 'center', background: 'var(--color-bg-tertiary)', cursor: 'pointer', position: 'relative' }}
+                      >
+                        <input type="file" accept="image/*,video/*" onChange={handleMediaUpload} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
+                        {isUploadingMedia ? (
+                          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>Uploading Media...</div>
+                        ) : (
+                          <>
+                            <UploadCloud size={24} color="var(--color-text-muted)" style={{ marginBottom: '0.5rem' }} />
+                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>Click or Drag & Drop image/video here</div>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -257,6 +407,7 @@ const AdCampaigns = () => {
               <label className="label">Call to Action Button</label>
               <select className="input-field" style={{ width: '100%', padding: '0.6rem' }}
                 value={formData.call_to_action} onChange={e => setFormData({...formData, call_to_action: e.target.value})}>
+                <option value="GET_DEMO">Get Demo</option>
                 <option value="LEARN_MORE">Learn More</option>
                 <option value="SIGN_UP">Sign Up</option>
                 <option value="SUBSCRIBE">Subscribe</option>
@@ -281,14 +432,16 @@ const AdCampaigns = () => {
             <div style={{ textAlign: 'center', padding: '1rem 0' }}>
               <CheckCircle2 size={40} color="var(--color-primary)" style={{ marginBottom: '0.5rem' }} />
               <h3 style={{ margin: 0 }}>Review & Launch</h3>
-              <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Final check before launching (Status will be PAUSED)</p>
+              <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                Final check before launching.
+              </p>
             </div>
             
             <div style={{ background: 'var(--color-bg-tertiary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
               {[
                 { label: 'Campaign', val: formData.campaign_name },
                 { label: 'Objective', val: formData.objective },
-                { label: 'Budget', val: `$${formData.budget.toFixed(2)} /day` },
+                { label: 'Budget', val: `INR ${formData.budget.toFixed(2)} /day` },
                 { label: 'Countries', val: formData.countries.join(', ') },
                 { label: 'Age', val: `${formData.age_min} - ${formData.age_max}` },
                 { label: 'Gender', val: formData.genders.length === 0 ? 'All' : formData.genders[0] === 1 ? 'Male' : 'Female' },
@@ -305,6 +458,21 @@ const AdCampaigns = () => {
                 </div>
               ))}
             </div>
+
+            <div style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'rgba(0,0,0,0.1)', marginTop: '0.5rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                <input 
+                  type="checkbox" 
+                  checked={formData.status === 'ACTIVE'}
+                  onChange={(e) => setFormData({...formData, status: e.target.checked ? 'ACTIVE' : 'PAUSED'})}
+                  style={{ width: '16px', height: '16px' }}
+                />
+                Launch Immediately (Set status to ACTIVE)
+              </label>
+              <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                If unchecked, the ad will be created in a PAUSED state for you to review in Ads Manager.
+              </p>
+            </div>
           </div>
         );
       default:
@@ -315,9 +483,132 @@ const AdCampaigns = () => {
   return (
     <SidebarLayout title="Ad Campaigns">
       
-      {!isWizardOpen ? (
-        <>
+      {!isWizardOpen && (
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+          <button 
+            onClick={() => setActiveTab('CREATE')}
+            style={{ 
+              background: 'none', border: 'none', color: activeTab === 'CREATE' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              fontSize: '1rem', fontWeight: 600, padding: '0.5rem 1rem', cursor: 'pointer',
+              borderBottom: activeTab === 'CREATE' ? '2px solid var(--color-primary)' : '2px solid transparent'
+            }}>
+            <Rocket size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
+            Create Campaign
+          </button>
+          <button 
+            onClick={() => setActiveTab('HISTORY')}
+            style={{ 
+              background: 'none', border: 'none', color: activeTab === 'HISTORY' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              fontSize: '1rem', fontWeight: 600, padding: '0.5rem 1rem', cursor: 'pointer',
+              borderBottom: activeTab === 'HISTORY' ? '2px solid var(--color-primary)' : '2px solid transparent'
+            }}>
+            <List size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
+            Campaign History
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'HISTORY' && !isWizardOpen ? (
+        <div style={{ animation: 'fadeIn 0.3s ease' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h3 style={{ margin: 0 }}>Ad Campaign History</h3>
+            <button className="btn btn-secondary" onClick={fetchHistory}><RefreshCw size={14} /> Refresh</button>
+          </div>
+          
+          <div className="glass-panel" style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                  <th style={{ padding: '1rem' }}>Campaign Info</th>
+                  <th style={{ padding: '1rem' }}>Budget</th>
+                  <th style={{ padding: '1rem' }}>Meta IDs</th>
+                  <th style={{ padding: '1rem' }}>Date & Time</th>
+                  <th style={{ padding: '1rem' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isFetchingHistory ? (
+                  <tr><td colSpan="5" style={{ padding: '2rem', textAlign: 'center' }}>Loading history...</td></tr>
+                ) : history.length === 0 ? (
+                  <tr><td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>No campaigns launched yet.</td></tr>
+                ) : (
+                  history.map(item => {
+                    const dateObj = new Date(item.created_at);
+                    return (
+                      <tr key={item.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{item.post_topic || 'Custom Ad'}</div>
+                            <span style={{ 
+                              fontSize: '0.6rem', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600,
+                              background: item.campaign_type === 'SCRATCH' ? 'rgba(139, 92, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                              color: item.campaign_type === 'SCRATCH' ? '#8b5cf6' : '#10b981' 
+                            }}>
+                              {item.campaign_type === 'SCRATCH' ? 'Custom' : 'Boosted'}
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem', color: 'var(--color-success)', fontWeight: 500 }}>
+                          INR {parseFloat(item.budget).toFixed(2)}/day
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                            Camp: {item.meta_campaign_id}<br/>
+                            Ad: {item.meta_ad_id}
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', marginBottom: '0.2rem' }}>
+                            <Calendar size={12} /> {dateObj.toLocaleDateString()}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.7rem' }}>
+                            <Clock size={12} /> {dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
+                            onClick={() => setViewCampaign(item)}
+                          >
+                            <Eye size={14} style={{ marginRight: '0.2rem' }} /> View
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* View Modal */}
+          {viewCampaign && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '1.5rem', animation: 'fadeIn 0.2s ease' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0 }}>Campaign Details</h3>
+                  <button onClick={() => setViewCampaign(null)} style={{ background: 'none', border: 'none', color: 'var(--color-text)', cursor: 'pointer' }}>
+                    <X size={20} />
+                  </button>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>Topic / Name</div>
+                  <div style={{ fontWeight: 600 }}>{viewCampaign.post_topic}</div>
+                </div>
+                {viewCampaign.post_media_url && (
+                  <div style={{ marginBottom: '1rem', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                    <img src={viewCampaign.post_media_url.startsWith('http') ? viewCampaign.post_media_url : `${import.meta.env.VITE_API_URL}${viewCampaign.post_media_url}`} alt="Campaign Media" style={{ width: '100%', display: 'block' }} />
+                  </div>
+                )}
+                <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setViewCampaign(null)}>Close</button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : !isWizardOpen ? (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', animation: 'fadeIn 0.3s ease' }}>
             <div>
               <h2 style={{ margin: 0 }}>Boost Published Posts</h2>
               <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Turn your successful content into paid Meta Ads.</p>
@@ -330,7 +621,7 @@ const AdCampaigns = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', animation: 'fadeIn 0.3s ease' }}>
             {isFetchingPosts ? (
               [1,2,3].map(i => <div key={i} className="glass-panel" style={{ height: '150px' }}><Skeleton type="text" width="100%" height="100%" /></div>)
             ) : posts.length === 0 ? (
@@ -363,7 +654,7 @@ const AdCampaigns = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
             <button className="btn btn-secondary" onClick={() => setIsWizardOpen(false)} style={{ padding: '0.4rem 0.8rem' }}>&larr; Back</button>
             <h2 style={{ margin: 0 }}>Create Campaign</h2>
-            <span style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>FREE</span>
+            <span style={{ background: 'var(--color-border)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>FREE</span>
           </div>
 
           <div className="glass-panel" style={{ padding: '2rem' }}>
@@ -400,3 +691,4 @@ const AdCampaigns = () => {
 };
 
 export default AdCampaigns;
+

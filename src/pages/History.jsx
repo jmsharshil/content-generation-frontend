@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
 import { Sparkles, CheckSquare, Square, ThumbsUp, ThumbsDown, Edit3, Send, Hash, RefreshCw, Copy, Search, Filter, Eye, X } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
@@ -177,11 +177,11 @@ const History = () => {
                   placeholder="Search posts..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ paddingLeft: '32px', paddingRight: '12px', width: '200px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-glass-border)' }}
+                  style={{ paddingLeft: '32px', paddingRight: '12px', width: '200px', fontSize: '0.8rem', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-glass-border)' }}
                 />
               </div>
 
-              <button className="btn btn-secondary" onClick={fetchPosts} title="Refresh" style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-glass-border)' }}>
+              <button className="btn btn-secondary" onClick={fetchPosts} title="Refresh" style={{ padding: '0.5rem', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-glass-border)' }}>
                 <RefreshCw size={14} color="var(--color-text-muted)" />
               </button>
             </div>
@@ -325,7 +325,7 @@ const History = () => {
                   </div>
                 </div>
               </div>
-              <button onClick={() => { setViewingPost(null); setEditingId(null); }} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '0.4rem', borderRadius: '50%', display: 'flex' }}>
+              <button onClick={() => { setViewingPost(null); setEditingId(null); }} style={{ background: 'var(--color-bg-tertiary)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '0.4rem', borderRadius: '50%', display: 'flex' }}>
                 <X size={18} />
               </button>
             </div>
@@ -410,3 +410,4 @@ const History = () => {
 };
 
 export default History;
+

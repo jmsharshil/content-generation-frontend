@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
 import { Sparkles, Calendar as CalendarIcon, Check, Clock, Copy, X, Edit2, Image as ImageIcon, Video as VideoIcon, List } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
@@ -190,7 +190,7 @@ const ContentStudio = () => {
           padding: '0.5rem',
           display: 'flex',
           flexDirection: 'column',
-          background: dayPosts.length > 0 ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+          background: dayPosts.length > 0 ? 'rgba(59, 130, 246, 0.08)' : 'var(--color-bg-tertiary)',
           borderRadius: 'var(--radius-md)',
           boxShadow: dayPosts.length > 0 ? 'inset 0 0 10px rgba(59, 130, 246, 0.1)' : 'none',
           transition: 'all var(--transition-normal)',
@@ -485,7 +485,7 @@ const ContentStudio = () => {
                 
                 return (
                 <div key={post.id} style={{
-                  background: 'rgba(255,255,255,0.02)',
+                  background: 'var(--color-bg-tertiary)',
                   border: '1px solid var(--color-glass-border)',
                   borderRadius: 'var(--radius-md)',
                   padding: '1.25rem',
@@ -563,12 +563,12 @@ const ContentStudio = () => {
 
       <style>{`
         .calendar-day:hover {
-          background: rgba(255, 255, 255, 0.05);
+          background: var(--color-bg-tertiary);
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         .hover-card:hover {
-          background: rgba(255, 255, 255, 0.03);
+          background: var(--color-bg-tertiary);
           border-color: rgba(59, 130, 246, 0.4);
         }
         @media (max-width: 900px) {
@@ -580,3 +580,4 @@ const ContentStudio = () => {
 };
 
 export default ContentStudio;
+

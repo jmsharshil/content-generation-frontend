@@ -1,16 +1,28 @@
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { LoaderProvider } from './context/LoaderContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
-import JmsAuth from './pages/JmsAuth';
-import MetaConnect from './pages/MetaConnect';
-import Dashboard from './pages/Dashboard';
-import BrandSetup from './pages/BrandSetup';
-import ContentStudio from './pages/ContentStudio';
-import History from './pages/History';
-import Profile from './pages/Profile';
-import AutoReply from './pages/AutoReply';
-import AdCampaigns from './pages/AdCampaigns';
+
+// Lazy load pages to prevent Vite from fetching everything at once and overloading the dev tunnel
+const JmsAuth = React.lazy(() => import('./pages/JmsAuth'));
+const MetaConnect = React.lazy(() => import('./pages/MetaConnect'));
+const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const BrandSetup = React.lazy(() => import('./pages/BrandSetup'));
+const ContentStudio = React.lazy(() => import('./pages/ContentStudio'));
+const History = React.lazy(() => import('./pages/History'));
+const Profile = React.lazy(() => import('./pages/Profile'));
+const AutoReply = React.lazy(() => import('./pages/AutoReply'));
+const AdCampaigns = React.lazy(() => import('./pages/AdCampaigns'));
+
+// A simple fallback to show while the specific page is being fetched
+const PageLoader = () => (
+  <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: 'var(--color-bg)' }}>
+    <div style={{ width: '40px', height: '40px', border: '3px solid rgba(59,130,246,0.3)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  </div>
+);
 
 function App() {
   return (
@@ -18,6 +30,7 @@ function App() {
       <LoaderProvider>
         <ToastProvider>
           <Router>
+            <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Navigate to="/auth" replace />} />
                 <Route path="/auth" element={<JmsAuth />} />
@@ -30,6 +43,7 @@ function App() {
                 <Route path="/auto-reply" element={<AutoReply />} />
                 <Route path="/ad-campaigns" element={<AdCampaigns />} />
               </Routes>
+            </Suspense>
           </Router>
         </ToastProvider>
       </LoaderProvider>

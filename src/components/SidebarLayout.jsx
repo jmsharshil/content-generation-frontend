@@ -175,7 +175,7 @@ const SidebarLayout = ({ children, title }) => {
                 padding: isCollapsed ? '0.6rem 0' : '0.45rem 0.75rem',
                 borderRadius: 'var(--radius-md)',
                 fontSize: '0.8rem',
-                color: isActive ? 'white' : 'var(--color-text-muted)',
+                color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
                 background: isActive ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
                 fontWeight: isActive ? '500' : '400',
                 transition: 'all var(--transition-fast)',
@@ -203,7 +203,7 @@ const SidebarLayout = ({ children, title }) => {
             </div>
           ) : (
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }} title={businessName}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--color-primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
                 {businessName ? businessName.charAt(0).toUpperCase() : 'B'}
               </div>
             </div>
@@ -296,3 +296,4 @@ const SidebarLayout = ({ children, title }) => {
 };
 
 export default SidebarLayout;
+

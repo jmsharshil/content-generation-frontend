@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 html { font-size: 14px; }
 
@@ -17,6 +17,7 @@ html { font-size: 14px; }
   --color-glass: rgba(17, 24, 39, 0.75);
   --color-glass-border: rgba(255, 255, 255, 0.06);
   --color-input-bg: rgba(0, 0, 0, 0.2);
+  --color-bg-tertiary: rgba(255, 255, 255, 0.04);
 
   /* Typography */
   --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -40,6 +41,7 @@ html { font-size: 14px; }
   --color-glass: rgba(255, 255, 255, 0.85);
   --color-glass-border: rgba(0, 0, 0, 0.06);
   --color-input-bg: #ffffff;
+  --color-bg-tertiary: rgba(0, 0, 0, 0.04);
 }
 
 * {
@@ -159,7 +161,7 @@ a:hover {
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--color-bg-tertiary);
   border-color: var(--color-text-muted);
 }
 
@@ -273,3 +275,4 @@ option {
     padding: 0.65rem 0.75rem;
   }
 }
+

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
 import { useLoader } from '../context/LoaderContext';
 import { useToast } from '../context/ToastContext';
@@ -7,7 +7,7 @@ import { MessageSquareReply, Heart, Send, AlertCircle, CheckCircle2, XCircle, Hi
 const ToggleSwitch = ({ checked, onChange }) => (
   <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
     <div style={{
-      width: '44px', height: '22px', background: checked ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)',
+      width: '44px', height: '22px', background: checked ? 'var(--color-primary)' : 'var(--color-border)',
       borderRadius: '22px', position: 'relative', transition: 'all 0.3s'
     }}>
       <div style={{
@@ -38,8 +38,8 @@ const TabButton = ({ id, activeTab, setActiveTab, icon, label, count }) => (
     <span>{label}</span>
     {count > 0 && (
       <span style={{
-        background: activeTab === id ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)',
-        color: 'white', fontSize: '0.7rem', padding: '0.1rem 0.4rem',
+        background: activeTab === id ? 'var(--color-primary)' : 'var(--color-border)',
+        color: '#ffffff', fontSize: '0.7rem', padding: '0.1rem 0.4rem',
         borderRadius: '10px', fontWeight: 600, minWidth: '20px', textAlign: 'center'
       }}>{count}</span>
     )}
@@ -122,8 +122,7 @@ const PostGroupedHistory = ({ logs, logRenderer, icon, emptyMessage }) => {
       return acc;
     }, {});
   }, [logs]);
-
-  const postIds = Object.keys(logsByPost);
+  const postIds = useMemo(() => Object.keys(logsByPost), [logsByPost]);
 
   useEffect(() => {
     if (!activePostId && postIds.length > 0) {
@@ -161,7 +160,7 @@ const PostGroupedHistory = ({ logs, logRenderer, icon, emptyMessage }) => {
 
   if (logs.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+      <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'var(--color-bg-tertiary)', borderRadius: '8px', border: '1px dashed var(--color-border)' }}>
         <div style={{ display: 'flex', justifyContent: 'center', opacity: 0.4, marginBottom: '0.75rem' }}>{icon}</div>
         <p style={{ color: 'var(--color-text-muted)', margin: 0, fontSize: '0.9rem' }}>{emptyMessage}</p>
       </div>
@@ -192,8 +191,8 @@ const PostGroupedHistory = ({ logs, logRenderer, icon, emptyMessage }) => {
                 style={{
                   scrollSnapAlign: 'start', flexShrink: 0,
                   width: '140px', height: '150px', borderRadius: '12px',
-                  background: activePostId === pid ? 'var(--color-primary)' : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${activePostId === pid ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)'}`,
+                  background: activePostId === pid ? 'var(--color-primary)' : 'var(--color-bg-tertiary)',
+                  border: `1px solid ${activePostId === pid ? 'var(--color-primary)' : 'var(--color-border)'}`,
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
                   cursor: 'pointer', transition: 'all 0.2s', overflow: 'hidden',
                   boxShadow: activePostId === pid ? '0 4px 12px rgba(59,130,246,0.3)' : 'none',
@@ -202,9 +201,9 @@ const PostGroupedHistory = ({ logs, logRenderer, icon, emptyMessage }) => {
               >
                 {/* Thumbnail Image */}
                 <div style={{ 
-                  width: '100%', height: '80px', background: 'rgba(255,255,255,0.05)', 
+                  width: '100%', height: '80px', background: 'var(--color-bg-tertiary)', 
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  borderBottom: `1px solid ${activePostId === pid ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)'}`
+                  borderBottom: `1px solid ${activePostId === pid ? 'var(--color-border)' : 'var(--color-bg-tertiary)'}`
                 }}>
                   {details?.image ? (
                     details.mediaType === 'VIDEO' || details.image.match(/\.(mp4|webm|ogg|mov)/i) ? (
@@ -225,7 +224,7 @@ const PostGroupedHistory = ({ logs, logRenderer, icon, emptyMessage }) => {
                   <p style={{ margin: 0, fontSize: '0.65rem', color: activePostId === pid ? '#fff' : 'var(--color-text)', fontWeight: 600, wordBreak: 'break-all', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     {pid === 'Unknown Post' ? 'Unknown Post' : pid}
                   </p>
-                  <span style={{ fontSize: '0.65rem', color: activePostId === pid ? 'rgba(255,255,255,0.8)' : 'var(--color-text-muted)', marginTop: '0.2rem', display: 'block' }}>
+                  <span style={{ fontSize: '0.65rem', color: activePostId === pid ? 'var(--color-primary)' : 'var(--color-text-muted)', marginTop: '0.2rem', display: 'block' }}>
                     {logsByPost[pid].length} Logs
                   </span>
                   {details?.link && (
@@ -503,7 +502,7 @@ const AutoReply = () => {
             {isLoadingLogs ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Loading...</div>
             ) : autoReplyLogs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'var(--color-bg-tertiary)', borderRadius: '8px', border: '1px dashed var(--color-border)' }}>
                 <MessageSquareReply size={32} color="var(--color-text-muted)" style={{ opacity: 0.4, marginBottom: '0.75rem' }} />
                 <p style={{ color: 'var(--color-text-muted)', margin: 0, fontSize: '0.9rem' }}>No auto-replies sent yet.</p>
               </div>
@@ -515,7 +514,7 @@ const AutoReply = () => {
                 logRenderer={(log) => (
                   <div key={log.id || Math.random()} style={{
                     padding: '0.85rem 1rem', borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)'
+                    background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-bg-tertiary)'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.4rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -559,7 +558,7 @@ const AutoReply = () => {
             {isLoadingDmLogs ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Loading...</div>
             ) : autoDmLogs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', background: 'var(--color-bg-tertiary)', borderRadius: '8px', border: '1px dashed var(--color-border)' }}>
                 <Heart size={32} color="var(--color-text-muted)" style={{ opacity: 0.4, marginBottom: '0.75rem' }} />
                 <p style={{ color: 'var(--color-text-muted)', margin: 0, fontSize: '0.9rem' }}>No auto DMs sent yet.</p>
                 <p style={{ color: 'var(--color-text-muted)', margin: '0.5rem 0 0', fontSize: '0.8rem' }}>Enable "DM on Like" in Settings and wait for likes!</p>
@@ -572,7 +571,7 @@ const AutoReply = () => {
                 logRenderer={(log) => (
                   <div key={log.id || Math.random()} style={{
                     padding: '0.85rem 1rem', borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)'
+                    background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-bg-tertiary)'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.4rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -618,7 +617,7 @@ const AutoReply = () => {
                       {log.post_id && (
                         <span style={{ 
                           fontSize: '0.7rem', color: 'var(--color-text-muted)', opacity: 0.7, 
-                          marginLeft: 'auto', background: 'rgba(255,255,255,0.05)', 
+                          marginLeft: 'auto', background: 'var(--color-bg-tertiary)', 
                           padding: '0.1rem 0.4rem', borderRadius: '4px', fontFamily: 'monospace' 
                         }}>
                           Post ID: {log.post_id}
@@ -652,3 +651,4 @@ const AutoReply = () => {
 };
 
 export default AutoReply;
+

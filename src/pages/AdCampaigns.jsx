@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
 import Stepper from '../components/Stepper';
 import { Rocket, RefreshCw, Target, LayoutTemplate, Link as LinkIcon, IndianRupee, CheckCircle2, List, Calendar, UploadCloud, X, Eye, Clock } from 'lucide-react';
@@ -18,6 +18,8 @@ const AdCampaigns = () => {
   const [history, setHistory] = useState([]);
   const [isFetchingHistory, setIsFetchingHistory] = useState(false);
   
+  const [brandWebsite, setBrandWebsite] = useState('https://jmstech.co/');
+
   // View Modal State
   const [viewCampaign, setViewCampaign] = useState(null);
 
@@ -68,11 +70,11 @@ const AdCampaigns = () => {
       const data = await response.json();
       
       if (data.options && data.options.length > 0) {
-        setFormData({
-          ...formData, 
+        setFormData(prev => ({
+          ...prev, 
           custom_creative: data.options[0],
-          custom_media_url: data.media_urls?.[0] || formData.custom_media_url
-        });
+          custom_media_url: data.media_urls?.[0] || prev.custom_media_url
+        }));
         showToast('AI Content Generated Successfully!', 'success');
       } else {
         showToast('No content generated.', 'error');
@@ -156,8 +158,67 @@ const AdCampaigns = () => {
     }
   };
 
+  const mapMetaObjective = (objectiveStr) => {
+    if (!objectiveStr) return 'OUTCOME_ENGAGEMENT';
+    const str = objectiveStr.toLowerCase();
+    if (str.includes('traffic') || str.includes('website') || str.includes('link')) return 'OUTCOME_TRAFFIC';
+    return 'OUTCOME_ENGAGEMENT';
+  };
+
+  const fetchBrandProfile = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/knowledge-base/`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.website_url) setBrandWebsite(data.website_url);
+        
+        const topic = data.topics ? data.topics.split(',')[0] : 'Ad Campaign';
+        
+        setFormData(prev => ({
+          ...prev,
+          website_url: data.website_url || prev.website_url,
+          objective: mapMetaObjective(data.default_fb_objective) || prev.objective,
+          campaign_name: data.topics ? `Ad Campaign for ${topic}` : prev.campaign_name,
+          custom_creative: prev.custom_creative || 'Generating AI content... Please wait.'
+        }));
+
+        // Fetch AI Generation automatically
+        fetch(`${import.meta.env.VITE_API_URL}/api/generate/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+          },
+          body: JSON.stringify({ topic: topic })
+        })
+        .then(res => res.json())
+        .then(genData => {
+          if (genData.options && genData.options.length > 0) {
+            setFormData(prev => ({
+              ...prev,
+              custom_creative: (prev.custom_creative === 'Generating AI content... Please wait.' || prev.custom_creative.includes('Generating AI')) ? genData.options[0] : prev.custom_creative
+            }));
+          }
+        })
+        .catch(err => {
+          console.error('Auto AI failed:', err);
+          setFormData(prev => ({
+            ...prev,
+            custom_creative: (prev.custom_creative === 'Generating AI content... Please wait.' || prev.custom_creative.includes('Generating AI')) ? (data.company_description || '') : prev.custom_creative
+          }));
+        });
+      }
+
+    } catch (error) {
+      console.error('Failed to fetch brand profile or assets', error);
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
+    fetchBrandProfile();
   }, []);
 
   useEffect(() => {
@@ -168,10 +229,11 @@ const AdCampaigns = () => {
 
   const handleBoostClick = (post) => {
     setSelectedPost(post);
+    const sep = brandWebsite.includes('?') ? '&' : '?';
     setFormData({
       ...formData,
       campaign_name: `Boost: ${post.topic || 'Post'}`,
-      website_url: `https://jmstech.co/?utm_source=facebook&utm_medium=paid_social&utm_campaign=boost_${post.id}`
+      website_url: `${brandWebsite}${sep}utm_source=facebook&utm_medium=paid_social&utm_campaign=boost_${post.id}`
     });
     setCurrentStep(1);
     setIsWizardOpen(true);
@@ -179,12 +241,15 @@ const AdCampaigns = () => {
 
   const handleCreateFromScratch = () => {
     setSelectedPost(null);
+    const sep = brandWebsite.includes('?') ? '&' : '?';
     setFormData({
       ...formData,
-      campaign_name: 'Custom Ad Campaign',
-      website_url: 'https://jmstech.co/?utm_source=facebook&utm_medium=paid_social&utm_campaign=custom_ad',
-      custom_creative: '',
-      custom_media_url: ''
+      campaign_name: formData.campaign_name && !formData.campaign_name.startsWith('Boost:') 
+        ? formData.campaign_name 
+        : 'Custom Ad Campaign',
+      website_url: `${brandWebsite}${sep}utm_source=facebook&utm_medium=paid_social&utm_campaign=custom_ad`,
+      custom_creative: formData.custom_creative,
+      custom_media_url: formData.custom_media_url
     });
     setCurrentStep(1);
     setIsWizardOpen(true);
@@ -407,8 +472,8 @@ const AdCampaigns = () => {
               <label className="label">Call to Action Button</label>
               <select className="input-field" style={{ width: '100%', padding: '0.6rem' }}
                 value={formData.call_to_action} onChange={e => setFormData({...formData, call_to_action: e.target.value})}>
-                <option value="GET_DEMO">Get Demo</option>
-                <option value="LEARN_MORE">Learn More</option>
+                <option value="LEARN_MORE">Get Demo (Learn More)</option>
+                <option value="OPEN_LINK">Open Link</option>
                 <option value="SIGN_UP">Sign Up</option>
                 <option value="SUBSCRIBE">Subscribe</option>
                 <option value="APPLY_NOW">Apply Now</option>
@@ -585,22 +650,34 @@ const AdCampaigns = () => {
           {/* View Modal */}
           {viewCampaign && (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div className="glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '1.5rem', animation: 'fadeIn 0.2s ease' }}>
+              <div className="glass-panel" style={{ width: '90%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem', animation: 'fadeIn 0.2s ease', margin: 'auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h3 style={{ margin: 0 }}>Campaign Details</h3>
                   <button onClick={() => setViewCampaign(null)} style={{ background: 'none', border: 'none', color: 'var(--color-text)', cursor: 'pointer' }}>
                     <X size={20} />
                   </button>
                 </div>
+                
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>Topic / Name</div>
                   <div style={{ fontWeight: 600 }}>{viewCampaign.post_topic}</div>
                 </div>
-                {viewCampaign.post_media_url && (
-                  <div style={{ marginBottom: '1rem', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
-                    <img src={viewCampaign.post_media_url.startsWith('http') ? viewCampaign.post_media_url : `${import.meta.env.VITE_API_URL}${viewCampaign.post_media_url}`} alt="Campaign Media" style={{ width: '100%', display: 'block' }} />
+
+                {viewCampaign.post_content && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>Ad Text / Caption</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text)', background: 'var(--color-bg-tertiary)', padding: '0.75rem', borderRadius: '6px', whiteSpace: 'pre-wrap' }}>
+                      {viewCampaign.post_content}
+                    </div>
                   </div>
                 )}
+
+                {viewCampaign.post_media_url && (
+                  <div style={{ marginBottom: '1rem', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--color-border)', display: 'flex', justifyContent: 'center', background: 'rgba(0,0,0,0.2)' }}>
+                    <img src={viewCampaign.post_media_url.startsWith('http') ? viewCampaign.post_media_url : `${import.meta.env.VITE_API_URL}${viewCampaign.post_media_url}`} alt="Campaign Media" style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain', display: 'block' }} />
+                  </div>
+                )}
+                
                 <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setViewCampaign(null)}>Close</button>
               </div>
             </div>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
 import Stepper from '../components/Stepper';
-import { Rocket, RefreshCw, Target, LayoutTemplate, Link as LinkIcon, IndianRupee, CheckCircle2, List, Calendar, UploadCloud, X, Eye, Clock } from 'lucide-react';
+import { Rocket, RefreshCw, Target, LayoutTemplate, Link as LinkIcon, IndianRupee, CheckCircle2, List, Calendar, UploadCloud, X, Eye, Clock, BarChart3, Activity } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { useLoader } from '../context/LoaderContext';
 import { useToast } from '../context/ToastContext';
 import Skeleton from '../components/Skeleton';
@@ -22,6 +23,10 @@ const AdCampaigns = () => {
 
   // View Modal State
   const [viewCampaign, setViewCampaign] = useState(null);
+  
+  // Insights State
+  const [campaignInsights, setCampaignInsights] = useState({});
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
 
   // Wizard State
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -155,6 +160,74 @@ const AdCampaigns = () => {
       console.error('Failed to fetch history', error);
     } finally {
       setIsFetchingHistory(false);
+    }
+  };
+
+  const [hasAutoSynced, setHasAutoSynced] = useState(false);
+  useEffect(() => {
+    if (activeTab === 'PERFORMANCE' && !hasAutoSynced && history.length > 0) {
+      setHasAutoSynced(true);
+      handleSyncAll();
+    }
+  }, [activeTab, history, hasAutoSynced]);
+
+  const handleSyncCampaign = async (item) => {
+    showLoader('Syncing Ad Campaign Insights...');
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ads/${item.id}/insights/`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to sync campaign');
+      }
+      const data = await response.json();
+      showToast('Campaign synced successfully!', 'success');
+      
+      setCampaignInsights(prev => ({...prev, [item.id]: { ...(data.insights || {}), _status: data.status }}));
+      
+      // Update history in background
+      fetchHistory();
+
+      // Show insights in the modal
+      setViewCampaign({
+        ...item,
+        status: data.status || item.status,
+        insights: data.insights,
+        adset_details: data.adset_details,
+        raw_details: data.raw_details
+      });
+      
+    } catch (error) {
+      showToast(error.message, 'error');
+    } finally {
+      hideLoader();
+    }
+  };
+
+  const handleSyncAll = async () => {
+    setIsSyncingAll(true);
+    showLoader('Syncing All Campaigns...');
+    try {
+      const validCampaigns = history.filter(h => h.meta_ad_id);
+      for (const camp of validCampaigns) {
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ads/${camp.id}/insights/`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setCampaignInsights(prev => ({...prev, [camp.id]: { ...(data.insights || {}), _status: data.status }}));
+          }
+        } catch(e) {}
+      }
+      showToast('All campaigns synced successfully!', 'success');
+      fetchHistory();
+    } catch(err) {
+      showToast('Failed to sync all campaigns', 'error');
+    } finally {
+      setIsSyncingAll(false);
+      hideLoader();
     }
   };
 
@@ -570,10 +643,263 @@ const AdCampaigns = () => {
             <List size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
             Campaign History
           </button>
+          <button 
+            onClick={() => setActiveTab('PERFORMANCE')}
+            style={{ 
+              background: 'none', border: 'none', color: activeTab === 'PERFORMANCE' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              fontSize: '1rem', fontWeight: 600, padding: '0.5rem 1rem', cursor: 'pointer',
+              borderBottom: activeTab === 'PERFORMANCE' ? '2px solid var(--color-primary)' : '2px solid transparent'
+            }}>
+            <BarChart3 size={16} style={{ display: 'inline', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
+            Performance
+          </button>
         </div>
       )}
 
-      {activeTab === 'HISTORY' && !isWizardOpen ? (
+      {activeTab === 'PERFORMANCE' && !isWizardOpen ? (
+        <div style={{ animation: 'fadeIn 0.3s ease' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <div>
+              <h3 style={{ margin: 0 }}>Overall Performance</h3>
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Analyze the performance of all your launched ad campaigns.</p>
+            </div>
+            <button className="btn btn-primary" onClick={handleSyncAll} disabled={isSyncingAll}>
+              <RefreshCw size={14} className={isSyncingAll ? "spin" : ""} /> Sync All Data
+            </button>
+          </div>
+          
+          {/* Analytics Charts */}
+          {(() => {
+            const uniqueCampaigns = [];
+            const seenIds = new Set();
+            history.filter(h => h.meta_ad_id).forEach(item => {
+              if (item.meta_campaign_id && !seenIds.has(item.meta_campaign_id)) {
+                seenIds.add(item.meta_campaign_id);
+                uniqueCampaigns.push(item);
+              } else if (!item.meta_campaign_id) {
+                uniqueCampaigns.push(item);
+              }
+            });
+
+            if (uniqueCampaigns.length === 0) return null;
+
+            // Compute overall stats
+            let totalSpend = 0, totalImpressions = 0, totalClicks = 0, totalReach = 0;
+            Object.values(campaignInsights).forEach(ins => {
+              totalSpend += parseFloat(ins.spend || 0);
+              totalImpressions += parseInt(ins.impressions || 0);
+              totalClicks += parseInt(ins.clicks || 0);
+              totalReach += parseInt(ins.reach || 0);
+            });
+
+            const displayCampaigns = uniqueCampaigns.slice(0, 5);
+
+            if (displayCampaigns.length === 0) return (
+              <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', marginBottom: '2rem', color: 'var(--color-text-muted)' }}>
+                No campaigns available for analytics yet. Launch a new campaign to see your metrics!
+              </div>
+            );
+
+            // Process regular lifetime chart data
+            const chartData = displayCampaigns.map((item, index) => {
+              const ins = campaignInsights[item.id] || {};
+              const rawName = item.post_topic || 'Custom Ad';
+              const shortName = rawName.length > 12 ? rawName.substring(0, 12) + '...' : rawName;
+              return {
+                name: `${shortName} (#${item.id})`, // Unique name to prevent Recharts from merging data
+                Spend: parseFloat(ins.spend || 0),
+                Reach: parseInt(ins.reach || 0),
+                Impressions: parseInt(ins.impressions || 0),
+                Clicks: parseInt(ins.clicks || 0),
+                Engagements: parseInt(ins.inline_post_engagement || 0),
+                CPC: parseFloat(ins.cpc || 0),
+                CPM: parseFloat(ins.cpm || 0),
+                CPP: parseFloat(ins.cpp || 0),
+                CTR: parseFloat(ins.ctr ? ins.ctr * 100 : 0)
+              };
+            });
+
+            // Process daily time-series data across the displayed campaigns
+            const dailyAggregated = {};
+            displayCampaigns.forEach(item => {
+              const daily = campaignInsights[item.id]?.daily_data || [];
+              daily.forEach(day => {
+                const date = day.date_start;
+                if (!dailyAggregated[date]) dailyAggregated[date] = { date: new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), rawDate: date, Reach: 0, Spend: 0, Clicks: 0 };
+                dailyAggregated[date].Reach += parseInt(day.reach || 0);
+                dailyAggregated[date].Spend += parseFloat(day.spend || 0);
+                dailyAggregated[date].Clicks += parseInt(day.clicks || 0);
+              });
+            });
+            const dailyChartData = Object.values(dailyAggregated).sort((a,b) => a.rawDate.localeCompare(b.rawDate));
+
+            const CustomTooltip = ({ active, payload, label }) => {
+              if (active && payload && payload.length) {
+                return (
+                  <div style={{ backgroundColor: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px', color: '#fff', fontSize: '12px' }}>
+                    <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>{label}</p>
+                    {payload.map((entry, index) => (
+                      <div key={index} style={{ color: entry.color, marginBottom: '4px' }}>
+                        {entry.name}: {['Spend', 'CPC', 'CPM', 'CPP'].includes(entry.name) ? '₹' : ''}{entry.value.toLocaleString(undefined, { minimumFractionDigits: ['Spend', 'CPC', 'CPM', 'CPP', 'CTR'].includes(entry.name) ? 2 : 0, maximumFractionDigits: 2 })}{entry.name === 'CTR' ? '%' : ''}
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+              return null;
+            };
+
+            return (
+              <div style={{ marginBottom: '3rem' }}>
+                {/* Overall Stats Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+                  <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--color-primary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Spend</div>
+                      <IndianRupee size={16} color="var(--color-primary)" />
+                    </div>
+                    <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-text)' }}>₹{totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #8b5cf6' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Reach</div>
+                      <Target size={16} color="#8b5cf6" />
+                    </div>
+                    <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-text)' }}>{totalReach.toLocaleString()}</div>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--color-success)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Impressions</div>
+                      <Eye size={16} color="var(--color-success)" />
+                    </div>
+                    <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-text)' }}>{totalImpressions.toLocaleString()}</div>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #06b6d4' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Clicks</div>
+                      <Activity size={16} color="#06b6d4" />
+                    </div>
+                    <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-text)' }}>{totalClicks.toLocaleString()}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
+                  {/* Chart 1: Daily Trends */}
+                  {dailyChartData.length > 0 && (
+                    <div className="glass-panel" style={{ padding: '2rem' }}>
+                      <div style={{ marginBottom: '1.5rem' }}>
+                        <h4 style={{ margin: 0, color: 'var(--color-text)', fontSize: '1.2rem' }}>Daily Growth Trends</h4>
+                        <p style={{ margin: '0.5rem 0 0 0', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Track your aggregated reach and spend over time.</p>
+                      </div>
+                      <div style={{ width: '100%', height: 350 }}>
+                        <ResponsiveContainer>
+                          <LineChart data={dailyChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                            <XAxis dataKey="date" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} dy={10} />
+                            <YAxis yAxisId="left" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} dx={-10} />
+                            <YAxis yAxisId="right" orientation="right" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} dx={10} />
+                            <RechartsTooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }} />
+                            <Legend wrapperStyle={{ fontSize: 13, paddingTop: '20px' }} iconType="circle" />
+                            <Line yAxisId="left" type="monotone" dataKey="Reach" stroke="#8b5cf6" strokeWidth={4} activeDot={{ r: 8, strokeWidth: 0 }} dot={{ r: 5, strokeWidth: 0, fill: '#8b5cf6' }} />
+                            <Line yAxisId="right" type="monotone" dataKey="Spend" stroke="var(--color-primary)" strokeWidth={4} activeDot={{ r: 8, strokeWidth: 0 }} dot={{ r: 5, strokeWidth: 0, fill: 'var(--color-primary)' }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chart 2: Campaign Comparison */}
+                  <div className="glass-panel" style={{ padding: '2rem' }}>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <h4 style={{ margin: 0, color: 'var(--color-text)', fontSize: '1.2rem' }}>Campaign Comparison</h4>
+                      <p style={{ margin: '0.5rem 0 0 0', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Compare Reach and Clicks across your top 5 recent campaigns.</p>
+                    </div>
+                    <div style={{ width: '100%', height: 350 }}>
+                      <ResponsiveContainer>
+                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} barGap={8}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                          <XAxis dataKey="name" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} dy={10} />
+                          <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} dx={-10} />
+                          <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                          <Legend wrapperStyle={{ fontSize: 13, paddingTop: '20px' }} iconType="circle" />
+                          <Bar dataKey="Reach" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={60} />
+                          <Bar dataKey="Clicks" fill="#06b6d4" radius={[6, 6, 0, 0]} maxBarSize={60} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          <h3 style={{ marginBottom: '1rem' }}>Campaign Wise Performance</h3>
+          <div className="glass-panel" style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                  <th style={{ padding: '1rem' }}>Campaign</th>
+                  <th style={{ padding: '1rem' }}>Status</th>
+                  <th style={{ padding: '1rem' }}>Spend</th>
+                  <th style={{ padding: '1rem' }}>Impressions</th>
+                  <th style={{ padding: '1rem' }}>Reach</th>
+                  <th style={{ padding: '1rem' }}>Clicks</th>
+                  <th style={{ padding: '1rem' }}>Link Clicks</th>
+                  <th style={{ padding: '1rem' }}>CPC</th>
+                  <th style={{ padding: '1rem' }}>CTR</th>
+                  <th style={{ padding: '1rem' }}>CPM</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const uniqueCampaigns = [];
+                  const seenIds = new Set();
+                  history.filter(h => h.meta_ad_id).forEach(item => {
+                    if (item.meta_campaign_id && !seenIds.has(item.meta_campaign_id)) {
+                      seenIds.add(item.meta_campaign_id);
+                      uniqueCampaigns.push(item);
+                    } else if (!item.meta_campaign_id) {
+                      uniqueCampaigns.push(item);
+                    }
+                  });
+                  
+                  if (uniqueCampaigns.length === 0) {
+                    return <tr><td colSpan="8" style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>No campaigns launched yet.</td></tr>;
+                  }
+
+                  return uniqueCampaigns.map(item => {
+                    const ins = campaignInsights[item.id] || {};
+                    return (
+                      <tr key={item.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '1rem', fontWeight: 600 }}>{item.post_topic || 'Custom Ad'}</td>
+                        <td style={{ padding: '1rem' }}>
+                          <span style={{ 
+                            fontSize: '0.65rem', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 600,
+                            background: (ins._status || item.status) === 'ACTIVE' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                            color: (ins._status || item.status) === 'ACTIVE' ? '#10b981' : '#ef4444' 
+                          }}>
+                            {ins._status || item.status || 'UNKNOWN'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '1rem', fontWeight: 500 }}>₹{parseFloat(ins.spend || 0).toFixed(2)}</td>
+                        <td style={{ padding: '1rem' }}>{ins.impressions || 0}</td>
+                        <td style={{ padding: '1rem' }}>{ins.reach || 0}</td>
+                        <td style={{ padding: '1rem' }}>{ins.clicks || 0}</td>
+                        <td style={{ padding: '1rem' }}>{ins.inline_link_clicks || 0}</td>
+                        <td style={{ padding: '1rem' }}>₹{parseFloat(ins.cpc || 0).toFixed(2)}</td>
+                        <td style={{ padding: '1rem' }}>
+                          {ins.ctr ? (parseFloat(ins.ctr) * 100).toFixed(2) + '%' : '0.00%'}
+                        </td>
+                        <td style={{ padding: '1rem' }}>₹{parseFloat(ins.cpm || 0).toFixed(2)}</td>
+                      </tr>
+                    );
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : activeTab === 'HISTORY' && !isWizardOpen ? (
         <div style={{ animation: 'fadeIn 0.3s ease' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h3 style={{ margin: 0 }}>Ad Campaign History</h3>
@@ -630,13 +956,20 @@ const AdCampaigns = () => {
                             <Clock size={12} /> {dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </div>
                         </td>
-                        <td style={{ padding: '1rem' }}>
+                        <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem' }}>
                           <button 
                             className="btn btn-secondary" 
                             style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
                             onClick={() => setViewCampaign(item)}
                           >
                             <Eye size={14} style={{ marginRight: '0.2rem' }} /> View
+                          </button>
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
+                            onClick={() => handleSyncCampaign(item)}
+                          >
+                            <RefreshCw size={14} style={{ marginRight: '0.2rem' }} /> Sync
                           </button>
                         </td>
                       </tr>
@@ -674,7 +1007,62 @@ const AdCampaigns = () => {
 
                 {viewCampaign.post_media_url && (
                   <div style={{ marginBottom: '1rem', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--color-border)', display: 'flex', justifyContent: 'center', background: 'rgba(0,0,0,0.2)' }}>
-                    <img src={viewCampaign.post_media_url.startsWith('http') ? viewCampaign.post_media_url : `${import.meta.env.VITE_API_URL}${viewCampaign.post_media_url}`} alt="Campaign Media" style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain', display: 'block' }} />
+                    {(viewCampaign.post_media_url.toLowerCase().endsWith('.mp4') || viewCampaign.post_media_url.toLowerCase().endsWith('.webm') || viewCampaign.post_media_url.toLowerCase().endsWith('.mov')) ? (
+                      <video src={viewCampaign.post_media_url.startsWith('http') ? viewCampaign.post_media_url : `${import.meta.env.VITE_API_URL}${viewCampaign.post_media_url}`} style={{ maxWidth: '100%', maxHeight: '400px', display: 'block' }} controls autoPlay muted loop />
+                    ) : (
+                      <img src={viewCampaign.post_media_url.startsWith('http') ? viewCampaign.post_media_url : `${import.meta.env.VITE_API_URL}${viewCampaign.post_media_url}`} alt="Campaign Media" style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain', display: 'block' }} />
+                    )}
+                  </div>
+                )}
+
+                {viewCampaign.insights && (
+                  <div style={{ marginBottom: '1rem', background: 'rgba(59,130,246,0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.2)' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary)', marginBottom: '0.5rem' }}>Campaign Insights</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem' }}>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Status:</span> <span style={{ fontWeight: 600 }}>{viewCampaign.status || 'N/A'}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Spend:</span> <span style={{ fontWeight: 600 }}>₹{viewCampaign.insights.spend || 0}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Impressions:</span> <span style={{ fontWeight: 600 }}>{viewCampaign.insights.impressions || 0}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Reach:</span> <span style={{ fontWeight: 600 }}>{viewCampaign.insights.reach || 0}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Clicks:</span> <span style={{ fontWeight: 600 }}>{viewCampaign.insights.clicks || 0}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Link Clicks:</span> <span style={{ fontWeight: 600 }}>{viewCampaign.insights.inline_link_clicks || 0}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>CPC:</span> <span style={{ fontWeight: 600 }}>₹{parseFloat(viewCampaign.insights.cpc || 0).toFixed(2)}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>CPM:</span> <span style={{ fontWeight: 600 }}>₹{parseFloat(viewCampaign.insights.cpm || 0).toFixed(2)}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>CPP:</span> <span style={{ fontWeight: 600 }}>₹{parseFloat(viewCampaign.insights.cpp || 0).toFixed(2)}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>CTR:</span> <span style={{ fontWeight: 600 }}>{viewCampaign.insights.ctr ? (parseFloat(viewCampaign.insights.ctr)*100).toFixed(2)+'%' : '0%'}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Frequency:</span> <span style={{ fontWeight: 600 }}>{viewCampaign.insights.frequency ? parseFloat(viewCampaign.insights.frequency).toFixed(2) : 0}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Post Engagements:</span> <span style={{ fontWeight: 600 }}>{viewCampaign.insights.inline_post_engagement || 0}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Cost / Link Click:</span> <span style={{ fontWeight: 600 }}>₹{parseFloat(viewCampaign.insights.cost_per_inline_link_click || 0).toFixed(2)}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Cost / Engagement:</span> <span style={{ fontWeight: 600 }}>₹{parseFloat(viewCampaign.insights.cost_per_inline_post_engagement || 0).toFixed(2)}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Quality Rank:</span> <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{(viewCampaign.insights.quality_ranking || 'N/A').replace(/_/g, ' ')}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Engagement Rank:</span> <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{(viewCampaign.insights.engagement_rate_ranking || 'N/A').replace(/_/g, ' ')}</span></div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Conversion Rank:</span> <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{(viewCampaign.insights.conversion_rate_ranking || 'N/A').replace(/_/g, ' ')}</span></div>
+                      {viewCampaign.raw_details?.updated_time && (
+                        <div><span style={{ color: 'var(--color-text-muted)' }}>Last Updated:</span> <span style={{ fontWeight: 600 }}>{new Date(viewCampaign.raw_details.updated_time).toLocaleString()}</span></div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {viewCampaign.adset_details && Object.keys(viewCampaign.adset_details).length > 0 && (
+                  <div style={{ marginBottom: '1rem', background: 'var(--color-bg-tertiary)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Adset Schedule & Budget</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem' }}>
+                      {viewCampaign.adset_details.daily_budget && (
+                        <div><span style={{ color: 'var(--color-text-muted)' }}>Daily Budget:</span> <span style={{ fontWeight: 600 }}>₹{(parseInt(viewCampaign.adset_details.daily_budget) / 100).toFixed(2)}</span></div>
+                      )}
+                      {viewCampaign.adset_details.lifetime_budget && (
+                        <div><span style={{ color: 'var(--color-text-muted)' }}>Lifetime Budget:</span> <span style={{ fontWeight: 600 }}>₹{(parseInt(viewCampaign.adset_details.lifetime_budget) / 100).toFixed(2)}</span></div>
+                      )}
+                      {viewCampaign.adset_details.start_time && (
+                        <div><span style={{ color: 'var(--color-text-muted)' }}>Start Time:</span> <span style={{ fontWeight: 600 }}>{new Date(viewCampaign.adset_details.start_time).toLocaleDateString()}</span></div>
+                      )}
+                      {viewCampaign.adset_details.end_time && (
+                        <div><span style={{ color: 'var(--color-text-muted)' }}>End Time:</span> <span style={{ fontWeight: 600 }}>{new Date(viewCampaign.adset_details.end_time).toLocaleDateString()}</span></div>
+                      )}
+                      {viewCampaign.adset_details.bid_strategy && (
+                        <div><span style={{ color: 'var(--color-text-muted)' }}>Bid Strategy:</span> <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{viewCampaign.adset_details.bid_strategy.replace(/_/g, ' ')}</span></div>
+                      )}
+                    </div>
                   </div>
                 )}
                 

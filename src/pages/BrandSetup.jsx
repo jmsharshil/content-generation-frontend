@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
 import { Type, Users, Save, Upload, ChevronRight, ChevronLeft, Check, X, Building, Globe, FileText } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
@@ -355,7 +355,7 @@ const BrandSetup = () => {
       <div className="fade-in" style={{ width: '100%', maxWidth: '1200px', margin: '0 auto' }}>
         
         {/* Top Header & Action */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
+        <div className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem', position: 'sticky', top: '-1rem', zIndex: 50, padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-glass-border)' }}>
           <p style={{ color: 'var(--color-text-muted)', margin: 0, maxWidth: '600px', lineHeight: '1.5' }}>
             Configure your brand identity all in one place. Fill in as much detail as possible to help the AI generate perfectly tailored content for you.
           </p>
@@ -392,7 +392,7 @@ const BrandSetup = () => {
         {/* Bento Grid Layout */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', 
           gap: '1.5rem',
           alignItems: 'stretch'
         }}>
@@ -411,9 +411,7 @@ const BrandSetup = () => {
                 <label className="label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
                   <Globe size={14} /> Website URL
                 </label>
-                <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => handleIndividualSave('website_url', websiteUrl)}>
-                  <Save size={12} /> Save
-                </button>
+                
               </div>
               <input 
                 type="url" className="input-field" 
@@ -428,9 +426,7 @@ const BrandSetup = () => {
                 <label className="label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
                   Company Description
                 </label>
-                <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => handleIndividualSave('company_description', companyDescription)}>
-                  <Save size={12} /> Save
-                </button>
+                
               </div>
               <textarea 
                 className="input-field" rows="6" 
@@ -455,9 +451,7 @@ const BrandSetup = () => {
                 <label className="label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
                   Target Audience
                 </label>
-                <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => handleIndividualSave('target_audience', audience)}>
-                  <Save size={12} /> Save
-                </button>
+                
               </div>
               <textarea 
                 className="input-field" rows="3" 
@@ -472,9 +466,7 @@ const BrandSetup = () => {
                 <label className="label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
                   <Type size={14} /> Tone & Personality
                 </label>
-                <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => handleIndividualSave('tone_of_voice', tone)}>
-                  <Save size={12} /> Save
-                </button>
+                
               </div>
               <textarea 
                 className="input-field" rows="6" 
@@ -499,9 +491,7 @@ const BrandSetup = () => {
                 <label className="label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
                   Rules & Taglines
                 </label>
-                <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => handleIndividualSave('brand_guidelines', guidelines)}>
-                  <Save size={12} /> Save
-                </button>
+                
               </div>
               <textarea 
                 className="input-field" 
@@ -521,9 +511,7 @@ const BrandSetup = () => {
                 </div>
                 <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Company Logo</h3>
               </div>
-              <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => handleIndividualAssetSave('LOGO')}>
-                <Save size={12} /> Save
-              </button>
+              
             </div>
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -584,9 +572,7 @@ const BrandSetup = () => {
                 </div>
                 <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Brand Documents</h3>
               </div>
-              <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => handleIndividualAssetSave('DOCUMENT')}>
-                <Save size={12} /> Save
-              </button>
+              
             </div>
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -653,9 +639,7 @@ const BrandSetup = () => {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label className="label" style={{ margin: 0 }}>Default Category</label>
-                <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => handleIndividualSave('default_category', category)}>
-                  <Save size={12} /> Save
-                </button>
+                
               </div>
               <MultiTagInput 
                 options={['Product', 'Service', 'Event', 'Offer', 'Educational']} 
@@ -667,9 +651,7 @@ const BrandSetup = () => {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label className="label" style={{ margin: 0 }}>Facebook Default Objective</label>
-                <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => handleIndividualSave('default_fb_objective', fbObjective)}>
-                  <Save size={12} /> Save
-                </button>
+                
               </div>
               <MultiTagInput 
                 options={['Awareness', 'Engagement', 'Traffic', 'Leads', 'Sales']} 
@@ -681,9 +663,7 @@ const BrandSetup = () => {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label className="label" style={{ margin: 0 }}>Instagram Default Objective</label>
-                <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => handleIndividualSave('default_insta_objective', instaObjective)}>
-                  <Save size={12} /> Save
-                </button>
+                
               </div>
               <MultiTagInput 
                 options={['Brand Awareness', 'Reach', 'Engagement', 'Conversions']} 
@@ -696,6 +676,15 @@ const BrandSetup = () => {
       </div>
       
       <style>{`
+        /* Globally hide scrollbar for a seamless app-like feel */
+        ::-webkit-scrollbar {
+          display: none !important;
+        }
+        * {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+        }
+        
         .fade-in {
           animation: fadeIn 0.4s ease-out;
         }

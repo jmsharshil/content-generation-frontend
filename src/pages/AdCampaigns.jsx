@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
 import Stepper from '../components/Stepper';
-import { Rocket, RefreshCw, Target, LayoutTemplate, Link as LinkIcon, IndianRupee, CheckCircle2, List, Calendar, UploadCloud, X, Eye, Clock, BarChart3, Activity } from 'lucide-react';
+import { Rocket, RefreshCw, Target, LayoutTemplate, Link as LinkIcon, IndianRupee, CheckCircle2, List, Calendar, UploadCloud, X, Eye, Clock, BarChart3, Activity, Users, MousePointerClick, TrendingUp, BarChart2, DollarSign } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { useLoader } from '../context/LoaderContext';
 import { useToast } from '../context/ToastContext';
@@ -27,6 +27,18 @@ const AdCampaigns = () => {
   // Insights State
   const [campaignInsights, setCampaignInsights] = useState({});
   const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [dateRange, setDateRange] = useState('Last 7 Days');
+
+  const formatContentLineByLine = (text) => {
+    if (!text) return '';
+    if (text.split('\n\n').length > 2) return text;
+    return text
+      .replace(/([.?!])\s+(?=[A-Z])/g, "$1\n\n")
+      .replace(/([.?!])\s+(?=[\uD83C-\uDBFF\u2700-\u27BF])/g, "$1\n\n")
+      .replace(/([\uD83C-\uDBFF\u2700-\u27BF]+)\s+(?=[A-Z])/g, "$1\n\n")
+      .replace(/\s+(?=#)/g, "\n\n")
+      .replace(/\n{3,}/g, "\n\n");
+  };
 
   // Wizard State
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -472,7 +484,7 @@ const AdCampaigns = () => {
                 <>
                   <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>The text and media from your generated post will be used automatically.</p>
                   <p style={{ margin: 0, fontSize: '0.7rem', padding: '0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '4px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--color-text-muted)' }}>
-                    "{selectedPost?.generated_content}"
+                    "{formatContentLineByLine(selectedPost?.generated_content)}"
                   </p>
                 </>
               ) : (
@@ -617,7 +629,6 @@ const AdCampaigns = () => {
         return null;
     }
   };
-
   return (
     <SidebarLayout title="Ad Campaigns">
       
@@ -658,16 +669,14 @@ const AdCampaigns = () => {
 
       {activeTab === 'PERFORMANCE' && !isWizardOpen ? (
         <div style={{ animation: 'fadeIn 0.3s ease' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <div>
-              <h3 style={{ margin: 0 }}>Overall Performance</h3>
-              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Analyze the performance of all your launched ad campaigns.</p>
-            </div>
-            <button className="btn btn-primary" onClick={handleSyncAll} disabled={isSyncingAll}>
-              <RefreshCw size={14} className={isSyncingAll ? "spin" : ""} /> Sync All Data
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <button className="btn btn-secondary" onClick={handleSyncAll} disabled={isSyncingAll} style={{ padding: '0.4rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <RefreshCw size={14} className={isSyncingAll ? "spin" : ""} />
+              {isSyncingAll ? 'Syncing...' : 'Sync Data'}
             </button>
           </div>
-          
+
           {/* Analytics Charts */}
           {(() => {
             const uniqueCampaigns = [];
@@ -681,66 +690,94 @@ const AdCampaigns = () => {
               }
             });
 
-            if (uniqueCampaigns.length === 0) return null;
-
-            // Compute overall stats
-            let totalSpend = 0, totalImpressions = 0, totalClicks = 0, totalReach = 0;
-            Object.values(campaignInsights).forEach(ins => {
-              totalSpend += parseFloat(ins.spend || 0);
-              totalImpressions += parseInt(ins.impressions || 0);
-              totalClicks += parseInt(ins.clicks || 0);
-              totalReach += parseInt(ins.reach || 0);
-            });
-
-            const displayCampaigns = uniqueCampaigns.slice(0, 5);
-
-            if (displayCampaigns.length === 0) return (
-              <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', marginBottom: '2rem', color: 'var(--color-text-muted)' }}>
-                No campaigns available for analytics yet. Launch a new campaign to see your metrics!
+            const StatCard = ({ icon: Icon, title, value, iconBg, iconColor }) => (
+              <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon size={18} color={iconColor} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.3rem', fontFamily: 'monospace' }}>{value}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{title}</div>
+                </div>
               </div>
             );
 
-            // Process regular lifetime chart data
-            const chartData = displayCampaigns.map((item, index) => {
-              const ins = campaignInsights[item.id] || {};
-              const rawName = item.post_topic || 'Custom Ad';
-              const shortName = rawName.length > 12 ? rawName.substring(0, 12) + '...' : rawName;
-              return {
-                name: `${shortName} (#${item.id})`, // Unique name to prevent Recharts from merging data
-                Spend: parseFloat(ins.spend || 0),
-                Reach: parseInt(ins.reach || 0),
-                Impressions: parseInt(ins.impressions || 0),
-                Clicks: parseInt(ins.clicks || 0),
-                Engagements: parseInt(ins.inline_post_engagement || 0),
-                CPC: parseFloat(ins.cpc || 0),
-                CPM: parseFloat(ins.cpm || 0),
-                CPP: parseFloat(ins.cpp || 0),
-                CTR: parseFloat(ins.ctr ? ins.ctr * 100 : 0)
-              };
+            // Compute overall stats with Date Filter
+            const getDateFilter = () => {
+              const today = new Date();
+              today.setHours(0,0,0,0);
+              let start = new Date(today);
+              
+              if (dateRange === 'Today') {
+                // start is today
+              } else if (dateRange === 'Last 7 Days') {
+                start.setDate(today.getDate() - 7);
+              } else if (dateRange === 'Last 30 Days') {
+                start.setDate(today.getDate() - 30);
+              } else if (dateRange === 'This Month') {
+                start.setDate(1);
+              } else {
+                start.setDate(today.getDate() - 90);
+              }
+              return start.getTime();
+            };
+            const filterTime = getDateFilter();
+            
+            let totalSpend = 0, totalImpressions = 0, totalClicks = 0, totalReach = 0, totalConversions = 0;
+            const dailyAggregated = {};
+
+            uniqueCampaigns.forEach(item => {
+              const daily = campaignInsights[item.id]?.daily_data || [];
+              let campSpend = 0, campImpressions = 0, campClicks = 0, campReach = 0, campConversions = 0;
+              
+              daily.forEach(day => {
+                const dTime = new Date(day.date_start).getTime();
+                if (dTime >= filterTime) {
+                  const daySpend = parseFloat(day.spend || 0);
+                  const dayImp = parseInt(day.impressions || 0);
+                  const dayClicks = parseInt(day.clicks || 0);
+                  const dayReach = parseInt(day.reach || 0);
+                  const dayConv = parseInt(day.conversions || 0);
+                  
+                  campSpend += daySpend;
+                  campImpressions += dayImp;
+                  campClicks += dayClicks;
+                  campReach += dayReach;
+                  campConversions += dayConv;
+
+                  const date = day.date_start;
+                  if (!dailyAggregated[date]) dailyAggregated[date] = { date: new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), rawDate: date, Reach: 0, Spend: 0, Clicks: 0, Impressions: 0 };
+                  dailyAggregated[date].Reach += dayReach;
+                  dailyAggregated[date].Spend += daySpend;
+                  dailyAggregated[date].Clicks += dayClicks;
+                  dailyAggregated[date].Impressions += dayImp;
+                }
+              });
+              
+              totalSpend += campSpend;
+              totalImpressions += campImpressions;
+              totalClicks += campClicks;
+              totalReach += campReach;
+              totalConversions += campConversions;
+              
+              item._filtered = { spend: campSpend, impressions: campImpressions, clicks: campClicks, reach: campReach, conversions: campConversions };
             });
 
-            // Process daily time-series data across the displayed campaigns
-            const dailyAggregated = {};
-            displayCampaigns.forEach(item => {
-              const daily = campaignInsights[item.id]?.daily_data || [];
-              daily.forEach(day => {
-                const date = day.date_start;
-                if (!dailyAggregated[date]) dailyAggregated[date] = { date: new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), rawDate: date, Reach: 0, Spend: 0, Clicks: 0 };
-                dailyAggregated[date].Reach += parseInt(day.reach || 0);
-                dailyAggregated[date].Spend += parseFloat(day.spend || 0);
-                dailyAggregated[date].Clicks += parseInt(day.clicks || 0);
-              });
-            });
+            const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+            const avgCpm = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
+            const avgCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+
+            const displayCampaigns = uniqueCampaigns.slice(0, 5);
             const dailyChartData = Object.values(dailyAggregated).sort((a,b) => a.rawDate.localeCompare(b.rawDate));
 
             const CustomTooltip = ({ active, payload, label }) => {
               if (active && payload && payload.length) {
                 return (
-                  <div style={{ backgroundColor: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '10px', color: '#fff', fontSize: '12px' }}>
-                    <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>{label}</p>
+                  <div style={{ backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px', color: 'var(--color-text)', fontSize: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
+                    <p style={{ margin: '0 0 8px 0', fontWeight: 600, color: 'var(--color-text-muted)' }}>{label}</p>
                     {payload.map((entry, index) => (
-                      <div key={index} style={{ color: entry.color, marginBottom: '4px' }}>
-                        {entry.name}: {['Spend', 'CPC', 'CPM', 'CPP'].includes(entry.name) ? '₹' : ''}{entry.value.toLocaleString(undefined, { minimumFractionDigits: ['Spend', 'CPC', 'CPM', 'CPP', 'CTR'].includes(entry.name) ? 2 : 0, maximumFractionDigits: 2 })}{entry.name === 'CTR' ? '%' : ''}
+                      <div key={index} style={{ color: entry.color, marginBottom: '4px', fontWeight: 500 }}>
+                        {entry.name}: {['Spend'].includes(entry.name) ? '₹' : ''}{entry.value.toLocaleString(undefined, { minimumFractionDigits: ['Spend'].includes(entry.name) ? 2 : 0, maximumFractionDigits: 2 })}
                       </div>
                     ))}
                   </div>
@@ -752,152 +789,123 @@ const AdCampaigns = () => {
             return (
               <div style={{ marginBottom: '3rem' }}>
                 {/* Overall Stats Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-                  <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--color-primary)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Spend</div>
-                      <IndianRupee size={16} color="var(--color-primary)" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+                  <StatCard icon={DollarSign} title="Total Spend" value={`₹${totalSpend.toFixed(2)}`} iconBg="rgba(16, 185, 129, 0.1)" iconColor="#10b981" />
+                  <StatCard icon={Eye} title="Impressions" value={totalImpressions.toLocaleString(undefined, {minimumFractionDigits: 2})} iconBg="rgba(59, 130, 246, 0.1)" iconColor="#3b82f6" />
+                  <StatCard icon={Users} title="Reach" value={totalReach.toLocaleString(undefined, {minimumFractionDigits: 2})} iconBg="rgba(59, 130, 246, 0.1)" iconColor="#3b82f6" />
+                  <StatCard icon={MousePointerClick} title="Clicks" value={totalClicks.toLocaleString(undefined, {minimumFractionDigits: 2})} iconBg="rgba(16, 185, 129, 0.1)" iconColor="#10b981" />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <StatCard icon={Activity} title="CTR" value={`${avgCtr.toFixed(2)}%`} iconBg="rgba(234, 179, 8, 0.1)" iconColor="#eab308" />
+                  <StatCard icon={BarChart2} title="CPM" value={`₹${avgCpm.toFixed(2)}`} iconBg="rgba(249, 115, 22, 0.1)" iconColor="#f97316" />
+                  <StatCard icon={Target} title="CPC" value={`₹${avgCpc.toFixed(2)}`} iconBg="rgba(239, 68, 68, 0.1)" iconColor="#ef4444" />
+                  <StatCard icon={TrendingUp} title="Conversions" value={totalConversions.toLocaleString(undefined, {minimumFractionDigits: 2})} iconBg="rgba(16, 185, 129, 0.1)" iconColor="#10b981" />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+                  {/* Chart 1: Spend Over Time */}
+                  <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <h4 style={{ margin: 0, color: 'var(--color-text)', fontSize: '0.9rem' }}>Spend Over Time</h4>
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-text)' }}>₹{totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div style={{ width: '100%', height: 280 }}>
+                      {dailyChartData.length > 0 ? (
+                        <ResponsiveContainer>
+                          <LineChart data={dailyChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <XAxis dataKey="date" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} dy={10} />
+                            <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} dx={-10} />
+                            <RechartsTooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--color-border)', strokeWidth: 1 }} />
+                            <Line type="monotone" dataKey="Spend" stroke="#3b82f6" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#3b82f6', strokeWidth: 0 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>No data for this period</div>
+                      )}
+                    </div>
                   </div>
-                  <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #8b5cf6' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Reach</div>
-                      <Target size={16} color="#8b5cf6" />
+
+                  {/* Chart 2: Impressions vs Clicks */}
+                  <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <h4 style={{ margin: 0, color: 'var(--color-text)', fontSize: '0.9rem' }}>Impressions vs Clicks</h4>
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-text)' }}>{totalReach.toLocaleString()}</div>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--color-success)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Impressions</div>
-                      <Eye size={16} color="var(--color-success)" />
+                    <div style={{ width: '100%', height: 280 }}>
+                      {dailyChartData.length > 0 ? (
+                        <ResponsiveContainer>
+                          <LineChart data={dailyChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <XAxis dataKey="date" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} dy={10} />
+                            <YAxis yAxisId="left" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} dx={-10} />
+                            <YAxis yAxisId="right" orientation="right" tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} dx={10} />
+                            <RechartsTooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--color-border)', strokeWidth: 1 }} />
+                            <Line yAxisId="left" type="monotone" dataKey="Impressions" stroke="#8b5cf6" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#8b5cf6', strokeWidth: 0 }} />
+                            <Line yAxisId="right" type="monotone" dataKey="Clicks" stroke="#06b6d4" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#06b6d4', strokeWidth: 0 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>No data for this period</div>
+                      )}
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-text)' }}>{totalImpressions.toLocaleString()}</div>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #06b6d4' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Clicks</div>
-                      <Activity size={16} color="#06b6d4" />
-                    </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-text)' }}>{totalClicks.toLocaleString()}</div>
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
-                  {/* Chart 1: Daily Trends */}
-                  {dailyChartData.length > 0 && (
-                    <div className="glass-panel" style={{ padding: '2rem' }}>
-                      <div style={{ marginBottom: '1.5rem' }}>
-                        <h4 style={{ margin: 0, color: 'var(--color-text)', fontSize: '1.2rem' }}>Daily Growth Trends</h4>
-                        <p style={{ margin: '0.5rem 0 0 0', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Track your aggregated reach and spend over time.</p>
-                      </div>
-                      <div style={{ width: '100%', height: 350 }}>
-                        <ResponsiveContainer>
-                          <LineChart data={dailyChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                            <XAxis dataKey="date" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} dy={10} />
-                            <YAxis yAxisId="left" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} dx={-10} />
-                            <YAxis yAxisId="right" orientation="right" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} dx={10} />
-                            <RechartsTooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }} />
-                            <Legend wrapperStyle={{ fontSize: 13, paddingTop: '20px' }} iconType="circle" />
-                            <Line yAxisId="left" type="monotone" dataKey="Reach" stroke="#8b5cf6" strokeWidth={4} activeDot={{ r: 8, strokeWidth: 0 }} dot={{ r: 5, strokeWidth: 0, fill: '#8b5cf6' }} />
-                            <Line yAxisId="right" type="monotone" dataKey="Spend" stroke="var(--color-primary)" strokeWidth={4} activeDot={{ r: 8, strokeWidth: 0 }} dot={{ r: 5, strokeWidth: 0, fill: 'var(--color-primary)' }} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Chart 2: Campaign Comparison */}
-                  <div className="glass-panel" style={{ padding: '2rem' }}>
-                    <div style={{ marginBottom: '1.5rem' }}>
-                      <h4 style={{ margin: 0, color: 'var(--color-text)', fontSize: '1.2rem' }}>Campaign Comparison</h4>
-                      <p style={{ margin: '0.5rem 0 0 0', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Compare Reach and Clicks across your top 5 recent campaigns.</p>
-                    </div>
-                    <div style={{ width: '100%', height: 350 }}>
-                      <ResponsiveContainer>
-                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} barGap={8}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                          <XAxis dataKey="name" tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} dy={10} />
-                          <YAxis tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} dx={-10} />
-                          <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                          <Legend wrapperStyle={{ fontSize: 13, paddingTop: '20px' }} iconType="circle" />
-                          <Bar dataKey="Reach" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={60} />
-                          <Bar dataKey="Clicks" fill="#06b6d4" radius={[6, 6, 0, 0]} maxBarSize={60} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+                <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', borderRadius: '12px', overflowX: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <h4 style={{ margin: 0, color: 'var(--color-text)', fontSize: '0.95rem' }}>Campaign Performance</h4>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', padding: '0.3rem 0.8rem', background: 'var(--color-border)', borderRadius: '16px' }}>{uniqueCampaigns.length} campaigns</span>
                   </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                        <th style={{ padding: '1rem', fontWeight: 500 }}>Campaign</th>
+                        <th style={{ padding: '1rem', fontWeight: 500 }}>DATE</th>
+                        <th style={{ padding: '1rem', fontWeight: 500 }}>IMPRESSIONS</th>
+                        <th style={{ padding: '1rem', fontWeight: 500 }}>CLICKS</th>
+                        <th style={{ padding: '1rem', fontWeight: 500 }}>SPEND</th>
+                        <th style={{ padding: '1rem', fontWeight: 500 }}>CTR</th>
+                        <th style={{ padding: '1rem', fontWeight: 500 }}>CPM</th>
+                        <th style={{ padding: '1rem', fontWeight: 500 }}>CPC</th>
+                        <th style={{ padding: '1rem', fontWeight: 500 }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {uniqueCampaigns.length === 0 ? (
+                        <tr><td colSpan="9" style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>No campaign data for this period</td></tr>
+                      ) : (
+                        uniqueCampaigns.map(item => {
+                          const ins = campaignInsights[item.id] || {};
+                          const filt = item._filtered || {};
+                          const cCtr = filt.impressions > 0 ? (filt.clicks / filt.impressions) * 100 : 0;
+                          const cCpm = filt.impressions > 0 ? (filt.spend / filt.impressions) * 1000 : 0;
+                          const cCpc = filt.clicks > 0 ? filt.spend / filt.clicks : 0;
+                          return (
+                            <tr key={item.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                              <td style={{ padding: '1rem', color: 'var(--color-text)' }}>{item.post_topic || 'Custom Ad'}</td>
+                              <td style={{ padding: '1rem', whiteSpace: 'nowrap', color: 'var(--color-text-muted)' }}>{item.created_at ? new Date(item.created_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A'}</td>
+                              <td style={{ padding: '1rem' }}>{filt.impressions || '0'}</td>
+                              <td style={{ padding: '1rem' }}>{filt.clicks || '0'}</td>
+                              <td style={{ padding: '1rem' }}>₹{parseFloat(filt.spend || 0).toFixed(2)}</td>
+                              <td style={{ padding: '1rem' }}>{cCtr.toFixed(2)}%</td>
+                              <td style={{ padding: '1rem' }}>₹{cCpm.toFixed(2)}</td>
+                              <td style={{ padding: '1rem' }}>₹{cCpc.toFixed(2)}</td>
+                              <td style={{ padding: '1rem' }}>
+                                <span style={{ 
+                                  fontSize: '0.7rem', padding: '0.3rem 0.6rem', borderRadius: '4px',
+                                  background: (ins._status || item.status) === 'ACTIVE' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                  color: (ins._status || item.status) === 'ACTIVE' ? '#10b981' : '#ef4444' 
+                                }}>
+                                  {ins._status || item.status || 'UNKNOWN'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             );
           })()}
-
-          <h3 style={{ marginBottom: '1rem' }}>Campaign Wise Performance</h3>
-          <div className="glass-panel" style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
-                  <th style={{ padding: '1rem' }}>Campaign</th>
-                  <th style={{ padding: '1rem' }}>Status</th>
-                  <th style={{ padding: '1rem' }}>Spend</th>
-                  <th style={{ padding: '1rem' }}>Impressions</th>
-                  <th style={{ padding: '1rem' }}>Reach</th>
-                  <th style={{ padding: '1rem' }}>Clicks</th>
-                  <th style={{ padding: '1rem' }}>Link Clicks</th>
-                  <th style={{ padding: '1rem' }}>CPC</th>
-                  <th style={{ padding: '1rem' }}>CTR</th>
-                  <th style={{ padding: '1rem' }}>CPM</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(() => {
-                  const uniqueCampaigns = [];
-                  const seenIds = new Set();
-                  history.filter(h => h.meta_ad_id).forEach(item => {
-                    if (item.meta_campaign_id && !seenIds.has(item.meta_campaign_id)) {
-                      seenIds.add(item.meta_campaign_id);
-                      uniqueCampaigns.push(item);
-                    } else if (!item.meta_campaign_id) {
-                      uniqueCampaigns.push(item);
-                    }
-                  });
-                  
-                  if (uniqueCampaigns.length === 0) {
-                    return <tr><td colSpan="8" style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>No campaigns launched yet.</td></tr>;
-                  }
-
-                  return uniqueCampaigns.map(item => {
-                    const ins = campaignInsights[item.id] || {};
-                    return (
-                      <tr key={item.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                        <td style={{ padding: '1rem', fontWeight: 600 }}>{item.post_topic || 'Custom Ad'}</td>
-                        <td style={{ padding: '1rem' }}>
-                          <span style={{ 
-                            fontSize: '0.65rem', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 600,
-                            background: (ins._status || item.status) === 'ACTIVE' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                            color: (ins._status || item.status) === 'ACTIVE' ? '#10b981' : '#ef4444' 
-                          }}>
-                            {ins._status || item.status || 'UNKNOWN'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '1rem', fontWeight: 500 }}>₹{parseFloat(ins.spend || 0).toFixed(2)}</td>
-                        <td style={{ padding: '1rem' }}>{ins.impressions || 0}</td>
-                        <td style={{ padding: '1rem' }}>{ins.reach || 0}</td>
-                        <td style={{ padding: '1rem' }}>{ins.clicks || 0}</td>
-                        <td style={{ padding: '1rem' }}>{ins.inline_link_clicks || 0}</td>
-                        <td style={{ padding: '1rem' }}>₹{parseFloat(ins.cpc || 0).toFixed(2)}</td>
-                        <td style={{ padding: '1rem' }}>
-                          {ins.ctr ? (parseFloat(ins.ctr) * 100).toFixed(2) + '%' : '0.00%'}
-                        </td>
-                        <td style={{ padding: '1rem' }}>₹{parseFloat(ins.cpm || 0).toFixed(2)}</td>
-                      </tr>
-                    );
-                  });
-                })()}
-              </tbody>
-            </table>
-          </div>
         </div>
       ) : activeTab === 'HISTORY' && !isWizardOpen ? (
         <div style={{ animation: 'fadeIn 0.3s ease' }}>
@@ -1037,7 +1045,7 @@ const AdCampaigns = () => {
                       <div><span style={{ color: 'var(--color-text-muted)' }}>Engagement Rank:</span> <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{(viewCampaign.insights.engagement_rate_ranking || 'N/A').replace(/_/g, ' ')}</span></div>
                       <div><span style={{ color: 'var(--color-text-muted)' }}>Conversion Rank:</span> <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{(viewCampaign.insights.conversion_rate_ranking || 'N/A').replace(/_/g, ' ')}</span></div>
                       {viewCampaign.raw_details?.updated_time && (
-                        <div><span style={{ color: 'var(--color-text-muted)' }}>Last Updated:</span> <span style={{ fontWeight: 600 }}>{new Date(viewCampaign.raw_details.updated_time).toLocaleString()}</span></div>
+                        <div><span style={{ color: 'var(--color-text-muted)' }}>Last Updated:</span> <span style={{ fontWeight: 600 }}>{new Date(viewCampaign.raw_details.updated_time).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</span></div>
                       )}
                     </div>
                   </div>
@@ -1143,7 +1151,7 @@ const AdCampaigns = () => {
                   Next &rarr;
                 </button>
               ) : (
-                <button className="btn btn-primary" style={{ background: 'var(--gradient-primary)' }} onClick={handleLaunchCampaign}>
+                <button className="btn btn-primary" onClick={handleLaunchCampaign}>
                   <Rocket size={14} /> Launch Campaign
                 </button>
               )}

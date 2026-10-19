@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
 import { Sparkles, Calendar as CalendarIcon, Check, Clock, Copy, X, Edit2, Image as ImageIcon, Video as VideoIcon, List } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
@@ -6,7 +6,7 @@ import { useToast } from '../context/ToastContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const ContentStudio = () => {
-  const { showLoader, hideLoader } = useLoader();
+  const { showLoader, hideLoader, updateLoader } = useLoader();
   const { showToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -21,7 +21,9 @@ const ContentStudio = () => {
     return saved ? JSON.parse(saved) : [];
   });
   const [selectedOptionIdx, setSelectedOptionIdx] = useState(null);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [isEditingContent, setIsEditingContent] = useState(false);
   
   // Scheduling State
   const [scheduleDate, setScheduleDate] = useState('');
@@ -58,8 +60,27 @@ const ContentStudio = () => {
   };
 
   const handleGenerate = async () => {
+    showLoader('Generating options with AI...', 10, 'Analyzing brand context & tone...');
     
-    showLoader('Generating options with AI...');
+    let currentProgress = 10;
+    const progressInterval = setInterval(() => {
+      currentProgress += Math.random() * 8 + 3;
+      if (currentProgress > 92) {
+        currentProgress = 92;
+      }
+      
+      let stepText = 'Synthesizing creative angles...';
+      if (currentProgress > 72) {
+        stepText = 'Generating visual creatives & headlines...';
+      } else if (currentProgress > 45) {
+        stepText = 'Crafting 5 tailored post captions...';
+      } else if (currentProgress > 25) {
+        stepText = 'Structuring engagement hooks & hashtags...';
+      }
+      
+      updateLoader({ progress: currentProgress, subText: stepText });
+    }, 400);
+
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/generate/`, {
         method: 'POST',
@@ -69,19 +90,29 @@ const ContentStudio = () => {
         },
         body: JSON.stringify({})
       });
+
+      clearInterval(progressInterval);
+
       if (response.ok) {
+        updateLoader({ progress: 100, subText: 'Ready!' });
         const data = await response.json();
         setGeneratedOptions(data.options || []);
         sessionStorage.setItem('cs_generatedOptions', JSON.stringify(data.options || []));
         setMediaUrls(data.media_urls || []);
         sessionStorage.setItem('cs_mediaUrls', JSON.stringify(data.media_urls || []));
         setSelectedOptionIdx(null);
-        hideLoader();
-        showToast('Generated 5 options!', 'success');
+        setTimeout(() => {
+          hideLoader();
+          showToast('Generated 5 options!', 'success');
+        }, 300);
       } else {
         hideLoader(); showToast('Failed to generate.', 'error');
       }
-    } catch (error) { hideLoader(); showToast('Network error.', 'error'); }
+    } catch (error) { 
+      clearInterval(progressInterval);
+      hideLoader(); 
+      showToast('Network error.', 'error'); 
+    }
   };
 
   const handleApproveAndSchedule = async () => {
@@ -167,13 +198,18 @@ const ContentStudio = () => {
     const daysInMonth = getDaysInMonth(year, month);
     const firstDay = getFirstDayOfMonth(year, month);
     
+    const today = new Date();
+    const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+    const todayDate = today.getDate();
+
     const days = [];
     for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="calendar-day empty" style={{ minHeight: '90px' }}></div>);
+      days.push(<div key={`empty-${i}`} className="calendar-day empty" style={{ minHeight: '34px', background: 'transparent', border: 'none' }}></div>);
     }
     
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(year, month, day);
+      const isToday = isCurrentMonth && day === todayDate;
       const dayPosts = scheduledPosts.filter(p => {
         const dateString = p.scheduled_at || p.created_at;
         if (!dateString) return false;
@@ -183,62 +219,111 @@ const ContentStudio = () => {
                postDate.getDate() === day;
       });
       
+      const hasPosts = dayPosts.length > 0;
+
       days.push(
-        <div key={`day-${day}`} className="calendar-day animate-fade-in" style={{
-          border: '1px solid var(--color-glass-border)',
-          minHeight: '100px',
-          padding: '0.5rem',
-          display: 'flex',
-          flexDirection: 'column',
-          background: dayPosts.length > 0 ? 'rgba(59, 130, 246, 0.08)' : 'var(--color-bg-tertiary)',
-          borderRadius: 'var(--radius-md)',
-          boxShadow: dayPosts.length > 0 ? 'inset 0 0 10px rgba(59, 130, 246, 0.1)' : 'none',
-          transition: 'all var(--transition-normal)',
-          animationDelay: `${day * 10}ms`,
-          cursor: dayPosts.length > 0 ? 'pointer' : 'default'
-        }} onClick={() => dayPosts.length > 0 && setSelectedDatePosts({ date: currentDate, posts: dayPosts })}>
-          <span style={{ fontWeight: 600, fontSize: '0.9rem', color: dayPosts.length > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>{day}</span>
+        <div 
+          key={`day-${day}`} 
+          className="calendar-day" 
+          style={{
+            border: isToday ? '1.5px solid var(--color-primary)' : '1px solid var(--color-glass-border)',
+            minHeight: '34px',
+            maxHeight: '38px',
+            padding: '0.2rem 0.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            background: isToday ? 'rgba(59, 130, 246, 0.12)' : hasPosts ? 'rgba(59, 130, 246, 0.08)' : 'var(--color-bg-tertiary)',
+            borderRadius: '8px',
+            transition: 'all 0.15s ease',
+            cursor: hasPosts ? 'pointer' : 'default',
+            position: 'relative'
+          }} 
+          onClick={() => hasPosts && setSelectedDatePosts({ date: currentDate, posts: dayPosts })}
+          title={hasPosts ? `${dayPosts.length} scheduled post(s)` : undefined}
+        >
+          <span style={{ 
+            fontWeight: isToday ? 700 : 500, 
+            fontSize: '0.8rem', 
+            color: isToday ? 'var(--color-primary)' : hasPosts ? 'var(--color-text)' : 'var(--color-text-muted)',
+            lineHeight: 1
+          }}>
+            {day}
+          </span>
           
-          {dayPosts.length > 0 && (
+          {hasPosts && (
             <div style={{ 
-              marginTop: 'auto', 
-              fontSize: '0.75rem', 
-              color: '#fff', 
-              background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))', 
-              padding: '0.35rem 0.5rem', 
-              borderRadius: 'var(--radius-sm)', 
-              textAlign: 'center',
-              fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              boxShadow: '0 2px 8px rgba(59,130,246,0.3)',
-              transition: 'transform 0.2s',
+              gap: '2px',
+              marginTop: '2px'
             }}>
-              <CalendarIcon size={12} /> {dayPosts.length} Post{dayPosts.length > 1 ? 's' : ''}
+              <span style={{
+                width: '5px',
+                height: '5px',
+                borderRadius: '50%',
+                background: 'var(--color-primary)',
+                boxShadow: '0 0 4px var(--color-primary)'
+              }} />
+              {dayPosts.length > 1 && (
+                <span style={{ fontSize: '0.6rem', color: 'var(--color-primary)', fontWeight: 700, lineHeight: 1 }}>
+                  {dayPosts.length}
+                </span>
+              )}
             </div>
           )}
         </div>
       );
     }
-    
+
     return (
-      <div className="animate-slide-up" style={{ marginTop: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <button className="btn btn-secondary" onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}>
+      <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '1rem',
+          padding: '0.25rem 0.5rem'
+        }}>
+          <button 
+            className="btn btn-secondary" 
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+            onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+          >
             &larr; Prev
           </button>
-          <h3 style={{ margin: 0, fontSize: '1.1rem', background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <h3 style={{ 
+            margin: 0, 
+            fontSize: '1.05rem', 
+            fontWeight: 600,
+            background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))', 
+            WebkitBackgroundClip: 'text', 
+            WebkitTextFillColor: 'transparent' 
+          }}>
             {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
           </h3>
-          <button className="btn btn-secondary" onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}>
+          <button 
+            className="btn btn-secondary" 
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+            onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+          >
             Next &rarr;
           </button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.4rem' }}>
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-            <div key={d} style={{ textAlign: 'center', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '1px', paddingBottom: '0.5rem' }}>{d}</div>
+            <div key={d} style={{ 
+              textAlign: 'center', 
+              fontSize: '0.72rem', 
+              fontWeight: 600, 
+              color: 'var(--color-text-muted)', 
+              textTransform: 'uppercase', 
+              letterSpacing: '0.5px', 
+              paddingBottom: '0.35rem' 
+            }}>
+              {d}
+            </div>
           ))}
           {days}
         </div>
@@ -246,221 +331,278 @@ const ContentStudio = () => {
     );
   };
 
-  return (
-    <SidebarLayout title="Content Studio">
-      <div className="studio-grid animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '2rem', alignItems: 'start' }}>
-        
-        {/* Left: Generate Action */}
-        <div className="glass-panel" style={{ 
-          textAlign: 'center', 
-          padding: '2.5rem 1.5rem', 
-          position: 'sticky', 
-          top: '2rem',
-          background: 'linear-gradient(145deg, rgba(17, 24, 39, 0.8), rgba(17, 24, 39, 0.95))',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
-        }}>
-          <div style={{ 
-            display: 'inline-flex', 
-            padding: '1.25rem', 
-            background: 'var(--color-primary-glow)', 
-            borderRadius: '50%', 
-            color: 'var(--color-primary)', 
-            marginBottom: '1.5rem',
-            animation: 'pulseGlow 3s infinite',
-            boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)'
-          }}>
-            <Sparkles size={36} />
-          </div>
-          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: 600 }}>Ready to Generate</h3>
-          
-          {topic ? (
-            <div style={{ marginBottom: '2rem', fontSize: '0.9rem' }}>
-              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', display: 'block', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Selected Topic</span>
-              <div style={{ 
-                padding: '1rem', 
-                background: 'rgba(0, 0, 0, 0.2)', 
-                borderRadius: 'var(--radius-md)', 
-                border: '1px solid var(--color-glass-border)', 
-                fontStyle: 'italic',
-                color: 'var(--color-text)',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
-              }}>
-                "{topic}"
-              </div>
-            </div>
-          ) : (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '2rem', lineHeight: '1.6' }}>
-              No topic selected. Please go back to <span style={{ color: 'var(--color-primary)', cursor: 'pointer', fontWeight: 500 }} onClick={() => navigate('/brand-setup')}>Brand Setup</span> to choose a topic.
-            </p>
-          )}
 
-          <button 
-            className="btn btn-primary" 
-            style={{ 
-              width: '100%', 
-              padding: '0.85rem', 
-              fontSize: '1rem', 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
-              gap: '0.5rem',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }} 
-            onClick={handleGenerate}
-          >
-            <Sparkles size={18} /> Generate 5 Options
-          </button>
+  const formatContentLineByLine = (text) => {
+    if (!text) return '';
+    // If it already has multiple paragraphs, assume it's formatted
+    if (text.split('\n\n').length > 2) return text;
+    
+    let formatted = text
+      // Newline after punctuation followed by a space and a capital letter
+      .replace(/([.?!])\s+(?=[A-Z])/g, "$1\n\n")
+      // Newline after punctuation followed by a space and an emoji
+      .replace(/([.?!])\s+(?=[\uD83C-\uDBFF\u2700-\u27BF])/g, "$1\n\n")
+      // Newline after emoji followed by a space and a capital letter
+      .replace(/([\uD83C-\uDBFF\u2700-\u27BF]+)\s+(?=[A-Z])/g, "$1\n\n")
+      // Newline before hashtags
+      .replace(/\s+(?=#)/g, "\n\n")
+      // Collapse multiple newlines
+      .replace(/\n{3,}/g, "\n\n");
+      
+    return formatted;
+  };
+
+  return (
+
+    <SidebarLayout title="Content Studio">
+      <div className="studio-container animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        
+        {/* Universal Header Area */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', paddingRight: '1rem', borderRight: '1px solid var(--color-glass-border)' }}>
+              <button className="btn btn-secondary" onClick={() => setShowCalendarModal(true)} style={{ padding: '0.4rem 0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.8rem' }}>
+                <CalendarIcon size={14} /> Calendar
+              </button>
+            </div>
+            {generatedOptions.length > 0 && (
+              <div style={{ display: 'flex', gap: '0.5rem', paddingRight: '1rem', borderRight: '1px solid var(--color-glass-border)' }}>
+                <button className={`btn ${activeTab === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('all')} style={{ padding: '0.4rem 0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.8rem' }}><List size={14} /> All</button>
+                <button className={`btn ${activeTab === 'image' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('image')} style={{ padding: '0.4rem 0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.8rem' }}><ImageIcon size={14} /> Images</button>
+                <button className={`btn ${activeTab === 'video' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('video')} style={{ padding: '0.4rem 0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.8rem' }}><VideoIcon size={14} /> Videos</button>
+                  <button className="btn btn-secondary" onClick={() => { setGeneratedOptions([]); sessionStorage.removeItem('cs_generatedOptions'); setMediaUrls([]); }} style={{ padding: '0.4rem 0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.8rem', color: '#ef4444' }}><X size={14} /> Clear</button>
+              </div>
+            )}
+            <button className="btn btn-primary" onClick={handleGenerate} style={{ padding: '0.6rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}>
+              <Sparkles size={18} /> Generate 5 Options
+            </button>
+          </div>
         </div>
 
         {/* Right: Options or Calendar */}
         <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
           {generatedOptions.length > 0 ? (
-            <>
-              {/* Large Image Preview for Selected Option */}
-              {selectedOptionIdx !== null && mediaUrls[selectedOptionIdx] && (
-                <div className="animate-fade-in" style={{ marginBottom: '0.5rem', textAlign: 'center' }}>
-                  {mediaUrls[selectedOptionIdx].match(/\.(mp4|webm|ogg)$/i) ? (
-                    <video src={mediaUrls[selectedOptionIdx].startsWith('http') ? mediaUrls[selectedOptionIdx] : `${import.meta.env.VITE_API_URL}${mediaUrls[selectedOptionIdx]}`} controls style={{ maxWidth: '100%', maxHeight: '450px', borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 30px rgba(0,0,0,0.3)', border: '1px solid var(--color-glass-border)', objectFit: 'contain' }} />
-                  ) : (
-                    <img src={mediaUrls[selectedOptionIdx].startsWith('http') ? mediaUrls[selectedOptionIdx] : `${import.meta.env.VITE_API_URL}${mediaUrls[selectedOptionIdx]}`} alt="Selected Preview" style={{ maxWidth: '100%', maxHeight: '450px', borderRadius: 'var(--radius-lg)', boxShadow: '0 8px 30px rgba(0,0,0,0.3)', border: '1px solid var(--color-glass-border)', objectFit: 'contain' }} />
-                  )}
-                </div>
-              )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', width: '100%' }}>
               
-              {/* Approval & Scheduling Panel */}
-              {selectedOptionIdx !== null && (
-                <div className="glass-panel animate-slide-up" style={{ 
-                  padding: '2rem', 
-                  background: 'linear-gradient(135deg, rgba(59,130,246,0.05), rgba(139,92,246,0.05))', 
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  boxShadow: '0 4px 24px rgba(59, 130, 246, 0.1)'
+              {/* Options List (Horizontal Scroll) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', overflow: 'hidden' }}>
+                <style>{`
+                  .hide-scrollbar::-webkit-scrollbar { display: none !important; }
+                  .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none !important; }
+                `}</style>
+                <div className="hide-scrollbar" style={{ 
+                  display: 'flex', 
+                  gap: '1.5rem', 
+                  overflowX: 'auto', 
+                  paddingBottom: '1rem',
+                  paddingTop: '0.5rem',
+                  WebkitOverflowScrolling: 'touch'
                 }}>
-                  <h3 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-primary)', fontSize: '1.1rem' }}>
-                    <CalendarIcon size={20} /> Schedule Selected Post
-                  </h3>
-                  <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 150px' }}>
-                      <label className="label">Date</label>
-                      <input type="date" className="input-field" value={scheduleDate} onChange={e => setScheduleDate(e.target.value)} />
-                    </div>
-                    <div style={{ flex: '1 1 120px' }}>
-                      <label className="label">Time</label>
-                      <input type="time" className="input-field" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} />
-                    </div>
-                    <div style={{ flex: '1 1 180px' }}>
-                      <label className="label">Platform</label>
-                      <select className="input-field" value={schedulePlatform} onChange={e => setSchedulePlatform(e.target.value)} style={{ padding: '0.65rem' }}>
-                        <option value="both">Both (Facebook & Instagram)</option>
-                        <option value="facebook">Facebook Only</option>
-                        <option value="instagram">Instagram Only</option>
-                      </select>
-                    </div>
-                    <button className="btn btn-primary" style={{ padding: '0.65rem 1.75rem', fontSize: '0.9rem', fontWeight: 600 }} onClick={handleApproveAndSchedule}>
-                      <Check size={18} /> Approve & Schedule
-                    </button>
-                  </div>
-                  <p style={{ margin: '1rem 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Sparkles size={14} color="var(--color-secondary)" /> Approving this post will teach the AI to generate future posts in this exact style.
-                  </p>
-                </div>
-              )}
+                  {generatedOptions.map((opt, idx) => {
+                    const mediaUrl = mediaUrls[idx] || '';
+                    const isVideo = mediaUrl.match(/\.(mp4|webm|ogg)$/i);
+                    const isImage = mediaUrl && !isVideo;
+                    
+                    if (activeTab === 'image' && !isImage) return null;
+                    if (activeTab === 'video' && !isVideo) return null;
 
-              {/* Options List */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.35rem', fontWeight: 600 }}>Select an Option</h2>
-                
-                {/* Media Type Tabs */}
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <button 
-                    className={`btn ${activeTab === 'all' ? 'btn-primary' : 'btn-secondary'}`} 
-                    onClick={() => setActiveTab('all')}
-                    style={{ flex: 1, display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}
-                  >
-                    <List size={16} /> All
-                  </button>
-                  <button 
-                    className={`btn ${activeTab === 'image' ? 'btn-primary' : 'btn-secondary'}`} 
-                    onClick={() => setActiveTab('image')}
-                    style={{ flex: 1, display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}
-                  >
-                    <ImageIcon size={16} /> Images
-                  </button>
-                  <button 
-                    className={`btn ${activeTab === 'video' ? 'btn-primary' : 'btn-secondary'}`} 
-                    onClick={() => setActiveTab('video')}
-                    style={{ flex: 1, display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}
-                  >
-                    <VideoIcon size={16} /> Videos
-                  </button>
-                </div>
-
-                {generatedOptions.map((opt, idx) => {
-                  const mediaUrl = mediaUrls[idx] || '';
-                  const isVideo = mediaUrl.match(/\.(mp4|webm|ogg)$/i);
-                  const isImage = mediaUrl && !isVideo;
                   
-                  if (activeTab === 'image' && !isImage) return null;
-                  if (activeTab === 'video' && !isVideo) return null;
+  const formatContentLineByLine = (text) => {
+    if (!text) return '';
+    // If it already has multiple paragraphs, assume it's formatted
+    if (text.split('\n\n').length > 2) return text;
+    
+    let formatted = text
+      // Newline after punctuation followed by a space and a capital letter
+      .replace(/([.?!])\s+(?=[A-Z])/g, "$1\n\n")
+      // Newline after punctuation followed by a space and an emoji
+      .replace(/([.?!])\s+(?=[\uD83C-\uDBFF\u2700-\u27BF])/g, "$1\n\n")
+      // Newline after emoji followed by a space and a capital letter
+      .replace(/([\uD83C-\uDBFF\u2700-\u27BF]+)\s+(?=[A-Z])/g, "$1\n\n")
+      // Newline before hashtags
+      .replace(/\s+(?=#)/g, "\n\n")
+      // Collapse multiple newlines
+      .replace(/\n{3,}/g, "\n\n");
+      
+    return formatted;
+  };
 
-                  return (
-                  <div key={idx} className="glass-panel hover-card animate-slide-up" style={{ 
-                    padding: '1.75rem', 
-                    border: selectedOptionIdx === idx ? '2px solid var(--color-primary)' : '1px solid var(--color-glass-border)',
-                    boxShadow: selectedOptionIdx === idx ? '0 0 20px rgba(59, 130, 246, 0.15)' : 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                    transform: selectedOptionIdx === idx ? 'scale(1.01)' : 'scale(1)',
-                    animationDelay: `${idx * 100}ms`
-                  }} onClick={() => setSelectedOptionIdx(idx)}>
-                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-                      <div style={{ flex: '1 1 300px', whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: '1.7', color: 'var(--color-text)' }}>
-                        {opt}
-                      </div>
+  return (
+
+                    <div key={idx} className="glass-panel hover-card animate-slide-up" style={{ 
+                      minWidth: '180px',
+                      flex: '1 1 0',
+                      padding: '1.25rem', 
+                      border: selectedOptionIdx === idx ? '2px solid var(--color-primary)' : '1px solid var(--color-glass-border)',
+                      boxShadow: selectedOptionIdx === idx ? '0 0 20px rgba(59, 130, 246, 0.15)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                      transform: selectedOptionIdx === idx ? 'scale(1.02) translateY(-4px)' : 'scale(1)',
+                      animationDelay: `${idx * 100}ms`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1rem',
+                      height: 'auto'
+                    }} onClick={() => {
+                      setSelectedOptionIdx(idx);
+                      setIsEditingContent(false);
+                    }}>
+                      
                       {mediaUrls[idx] && (
-                        <div style={{ flexShrink: 0, width: '140px', height: '140px' }}>
+                        <div style={{ width: '100%', aspectRatio: '1 / 1', flexShrink: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--color-glass-border)', background: 'var(--color-bg-tertiary)' }}>
                           {mediaUrls[idx].match(/\.(mp4|webm|ogg)$/i) ? (
-                            <video src={mediaUrls[idx].startsWith('http') ? mediaUrls[idx] : `${import.meta.env.VITE_API_URL}${mediaUrls[idx]}`} style={{ width: '100%', height: '100%', borderRadius: 'var(--radius-md)', objectFit: 'cover', border: '1px solid var(--color-glass-border)' }} muted loop autoPlay playsInline />
+                            <video src={mediaUrls[idx].startsWith('http') ? mediaUrls[idx] : `${import.meta.env.VITE_API_URL}${mediaUrls[idx]}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} muted loop autoPlay playsInline />
                           ) : (
-                            <img src={mediaUrls[idx].startsWith('http') ? mediaUrls[idx] : `${import.meta.env.VITE_API_URL}${mediaUrls[idx]}`} alt="Generated" style={{ width: '100%', height: '100%', borderRadius: 'var(--radius-md)', objectFit: 'cover', border: '1px solid var(--color-glass-border)' }} />
+                            <img src={mediaUrls[idx].startsWith('http') ? mediaUrls[idx] : `${import.meta.env.VITE_API_URL}${mediaUrls[idx]}`} alt="Generated" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                           )}
                         </div>
                       )}
+                      
+                      <div className="hide-scrollbar" style={{ flex: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--color-text)', overflowY: 'auto', overflowX: 'hidden', paddingRight: '0.5rem' }}>
+                        {formatContentLineByLine(opt)}
+                      </div>
+
                     </div>
-                    <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-end' }}>
-                      <button className={`btn ${selectedOptionIdx === idx ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '0.4rem 1.25rem' }}>
-                        {selectedOptionIdx === idx ? 'Selected' : 'Select Option'}
-                      </button>
-                    </div>
-                  </div>
-                )})}
-              </div>
-            </>
-          ) : (
-            <div className="glass-panel animate-fade-in" style={{ padding: '2.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-                <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '0.5rem', borderRadius: 'var(--radius-md)' }}>
-                  <CalendarIcon size={24} color="var(--color-primary)" />
+                  )})}
                 </div>
-                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>Content Calendar</h2>
               </div>
-              {renderCalendar()}
+
+              {/* Bottom Sticky Panel has been replaced with a Modal below */}
+            </div>
+          ) : (
+            <div className="glass-panel animate-fade-in" style={{ padding: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '1.5rem', minHeight: '400px' }}>
+              <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '1.5rem', borderRadius: '50%' }}>
+                <Sparkles size={40} color="var(--color-primary)" />
+              </div>
+              <div>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.3rem', color: 'var(--color-text)' }}>Ready to Create?</h3>
+                <p style={{ margin: 0, color: 'var(--color-text-muted)', maxWidth: '400px', lineHeight: '1.5' }}>
+                  Click "Generate 5 Options" to use the AI Prompt Engine and create perfectly tailored content for your brand.
+                </p>
+              </div>
             </div>
           )}
         </div>
       </div>
       
+      {/* Schedule Selected Post Modal */}
+      {selectedOptionIdx !== null && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1100,
+          padding: '3rem 1rem 1.5rem',
+          boxSizing: 'border-box',
+          overflowY: 'auto'
+        }} onClick={() => setSelectedOptionIdx(null)}>
+          <div className="glass-panel hide-scrollbar animate-slide-up" style={{
+            width: '100%', maxWidth: '680px', maxHeight: '86vh',
+            background: 'var(--color-bg-secondary)', padding: '1.5rem',
+            borderRadius: '16px',
+            border: '1px solid var(--color-glass-border)',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
+            display: 'flex', flexDirection: 'column',
+            overflowY: 'auto'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--color-primary)' }}>
+                <CalendarIcon size={20} /> Schedule Post
+              </h2>
+              <button className="btn btn-secondary" style={{ padding: '0.4rem', borderRadius: '8px' }} onClick={() => setSelectedOptionIdx(null)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
+              {/* Left Column: Preview */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {mediaUrls[selectedOptionIdx] && (
+                  <div style={{ width: '130px', height: '130px', alignSelf: 'center', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-glass-border)', background: 'var(--color-bg-tertiary)', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+                    {mediaUrls[selectedOptionIdx].match(/\.(mp4|webm|ogg)$/i) ? (
+                      <video src={mediaUrls[selectedOptionIdx].startsWith('http') ? mediaUrls[selectedOptionIdx] : `${import.meta.env.VITE_API_URL}${mediaUrls[selectedOptionIdx]}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop autoPlay playsInline controls />
+                    ) : (
+                      <img src={mediaUrls[selectedOptionIdx].startsWith('http') ? mediaUrls[selectedOptionIdx] : `${import.meta.env.VITE_API_URL}${mediaUrls[selectedOptionIdx]}`} alt="Selected Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )}
+                  </div>
+                )}
+                
+                <div style={{ padding: '0.75rem', background: 'var(--color-bg-tertiary)', borderRadius: '10px', border: '1px solid var(--color-glass-border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)' }}>Caption</span>
+                    <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', display: 'flex', gap: '0.3rem', alignItems: 'center' }} onClick={() => setIsEditingContent(!isEditingContent)}>
+                      <Edit2 size={12} /> {isEditingContent ? 'Done' : 'Edit'}
+                    </button>
+                  </div>
+                  {isEditingContent ? (
+                    <textarea 
+                      className="input-field hide-scrollbar" 
+                      value={formatContentLineByLine(generatedOptions[selectedOptionIdx])} 
+                      onChange={(e) => {
+                        const newOpts = [...generatedOptions];
+                        newOpts[selectedOptionIdx] = e.target.value;
+                        setGeneratedOptions(newOpts);
+                        sessionStorage.setItem('cs_generatedOptions', JSON.stringify(newOpts));
+                      }}
+                      style={{ minHeight: '100px', fontSize: '0.85rem', width: '100%', resize: 'vertical', padding: '0.5rem' }}
+                    />
+                  ) : (
+                    <div className="hide-scrollbar" style={{ overflowY: 'auto', maxHeight: '120px' }}>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text)', lineHeight: '1.5', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        {formatContentLineByLine(generatedOptions[selectedOptionIdx])}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Controls */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <div>
+                  <label className="label" style={{ fontSize: '0.78rem', marginBottom: '0.25rem', display: 'block' }}>Date</label>
+                  <input type="date" className="input-field" value={scheduleDate} onChange={e => setScheduleDate(e.target.value)} style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }} />
+                </div>
+                <div>
+                  <label className="label" style={{ fontSize: '0.78rem', marginBottom: '0.25rem', display: 'block' }}>Time</label>
+                  <input type="time" className="input-field" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }} />
+                </div>
+                <div>
+                  <label className="label" style={{ fontSize: '0.78rem', marginBottom: '0.25rem', display: 'block' }}>Platform</label>
+                  <select className="input-field" value={schedulePlatform} onChange={e => setSchedulePlatform(e.target.value)} style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}>
+                    <option value="both">Both (Facebook & Instagram)</option>
+                    <option value="facebook">Facebook Only</option>
+                    <option value="instagram">Instagram Only</option>
+                  </select>
+                </div>
+                
+                <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <button className="btn btn-primary" style={{ padding: '0.65rem 1rem', fontSize: '0.9rem', fontWeight: 600, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', borderRadius: '10px' }} onClick={() => { handleApproveAndSchedule(); setSelectedOptionIdx(null); }}>
+                    <Check size={18} /> Approve & Schedule
+                  </button>
+                  <button className="btn btn-secondary" style={{ padding: '0.5rem', fontSize: '0.82rem', width: '100%', borderRadius: '10px' }} onClick={() => setSelectedOptionIdx(null)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Date Posts Modal */}
       {selectedDatePosts && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-          padding: '1rem'
+          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1100,
+          padding: '3rem 1rem 1.5rem',
+          boxSizing: 'border-box',
+          overflowY: 'auto'
         }} onClick={() => setSelectedDatePosts(null)}>
-          <div className="glass-panel animate-slide-up" style={{
+          <div className="glass-panel hide-scrollbar animate-slide-up" style={{
             width: '100%', maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto',
             background: 'var(--color-bg-secondary)', padding: '1.5rem',
             boxShadow: '0 10px 40px rgba(0,0,0,0.3)', border: '1px solid var(--color-glass-border)'
@@ -483,7 +625,29 @@ const ContentStudio = () => {
               {selectedDatePosts.posts.map(post => {
                 const displayTitle = post.topic || (post.generated_content ? post.generated_content.split(' ').slice(0, 5).join(' ') + '...' : 'Scheduled Post');
                 
-                return (
+              
+  const formatContentLineByLine = (text) => {
+    if (!text) return '';
+    // If it already has multiple paragraphs, assume it's formatted
+    if (text.split('\n\n').length > 2) return text;
+    
+    let formatted = text
+      // Newline after punctuation followed by a space and a capital letter
+      .replace(/([.?!])\s+(?=[A-Z])/g, "$1\n\n")
+      // Newline after punctuation followed by a space and an emoji
+      .replace(/([.?!])\s+(?=[\uD83C-\uDBFF\u2700-\u27BF])/g, "$1\n\n")
+      // Newline after emoji followed by a space and a capital letter
+      .replace(/([\uD83C-\uDBFF\u2700-\u27BF]+)\s+(?=[A-Z])/g, "$1\n\n")
+      // Newline before hashtags
+      .replace(/\s+(?=#)/g, "\n\n")
+      // Collapse multiple newlines
+      .replace(/\n{3,}/g, "\n\n");
+      
+    return formatted;
+  };
+
+  return (
+
                 <div key={post.id} style={{
                   background: 'var(--color-bg-tertiary)',
                   border: '1px solid var(--color-glass-border)',
@@ -552,7 +716,7 @@ const ContentStudio = () => {
                   )}
                   
                   <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-                    {post.generated_content}
+                    {formatContentLineByLine(post.generated_content)}
                   </p>
                 </div>
               )})}
@@ -575,6 +739,38 @@ const ContentStudio = () => {
           .studio-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
+    
+      {/* Calendar Modal */}
+      {showCalendarModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000,
+          padding: '3.5rem 1rem 1.5rem',
+          boxSizing: 'border-box',
+          overflowY: 'auto'
+        }} onClick={() => setShowCalendarModal(false)}>
+          <div className="glass-panel hide-scrollbar animate-slide-up" style={{
+            width: '100%', maxWidth: '440px',
+            background: 'var(--color-bg-secondary)', padding: '1.25rem',
+            border: '1px solid var(--color-glass-border)',
+            borderRadius: '16px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
+            display: 'flex', flexDirection: 'column'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-primary)' }}>
+                <CalendarIcon size={18} /> Content Calendar
+              </h2>
+              <button className="btn btn-secondary" style={{ padding: '0.35rem', borderRadius: '8px' }} onClick={() => setShowCalendarModal(false)}>
+                <X size={16} />
+              </button>
+            </div>
+            {renderCalendar()}
+          </div>
+        </div>
+      )}
+
     </SidebarLayout>
   );
 };

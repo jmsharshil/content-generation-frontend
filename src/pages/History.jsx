@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
 import { Sparkles, CheckSquare, Square, ThumbsUp, ThumbsDown, Edit3, Send, Hash, RefreshCw, Copy, Search, Filter, Eye, X } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
@@ -7,7 +7,7 @@ import { useLocation } from 'react-router-dom';
 import Skeleton from '../components/Skeleton';
 
 const History = () => {
-  const { showLoader, hideLoader } = useLoader();
+  const { showLoader, hideLoader, updateLoader } = useLoader();
   const { showToast } = useToast();
   const location = useLocation();
 
@@ -73,9 +73,21 @@ const History = () => {
 
   const handleGenerate = async () => {
     if (!topic.trim()) { showToast('Please enter a topic.', 'info'); return; }
-    showLoader('Generating with AI...');
+    showLoader('Generating with AI...', 10, 'Analyzing topic & drafting content...');
+    
+    let currentProgress = 10;
+    const progressInterval = setInterval(() => {
+      currentProgress += Math.random() * 8 + 3;
+      if (currentProgress > 92) currentProgress = 92;
+      
+      let step = 'Synthesizing creative angles...';
+      if (currentProgress > 65) step = 'Crafting captions and hashtags...';
+      else if (currentProgress > 35) step = 'Tailoring brand tone...';
+      
+      updateLoader({ progress: currentProgress, subText: step });
+    }, 400);
+
     try {
-      // Assuming backend might take tone in future or already does
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/generate/`, {
         method: 'POST',
         headers: {
@@ -84,12 +96,19 @@ const History = () => {
         },
         body: JSON.stringify({ topic })
       });
+      clearInterval(progressInterval);
       if (response.ok) {
-        hideLoader(); showToast('Post generated!', 'success'); setTopic(''); fetchPosts();
+        updateLoader({ progress: 100, subText: 'Done!' });
+        setTimeout(() => {
+          hideLoader(); showToast('Post generated!', 'success'); setTopic(''); fetchPosts();
+        }, 300);
       } else {
         hideLoader(); showToast('Failed to generate.', 'error');
       }
-    } catch (error) { hideLoader(); showToast('Network error.', 'error'); }
+    } catch (error) { 
+      clearInterval(progressInterval);
+      hideLoader(); showToast('Network error.', 'error'); 
+    }
   };
 
   const handlePublish = async () => {
@@ -158,125 +177,278 @@ const History = () => {
   };
 
 
+  const formatContentLineByLine = (text) => {
+    if (!text) return '';
+    if (text.split('\n\n').length > 2) return text;
+    return text
+      .replace(/([.?!])\s+(?=[A-Z])/g, "$1\n\n")
+      .replace(/([.?!])\s+(?=[\uD83C-\uDBFF\u2700-\u27BF])/g, "$1\n\n")
+      .replace(/([\uD83C-\uDBFF\u2700-\u27BF]+)\s+(?=[A-Z])/g, "$1\n\n")
+      .replace(/\s+(?=#)/g, "\n\n")
+      .replace(/\n{3,}/g, "\n\n");
+  };
+
+  // Stats calculation
+  const totalPosts = posts.length;
+  const publishedCount = posts.filter(p => p.status === 'PUBLISHED').length;
+  const draftCount = posts.filter(p => p.status === 'DRAFT' || p.status === 'REVIEW').length;
+
   return (
     <>
       <SidebarLayout title="Post History">
 
-      <div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '1100px', margin: '0 auto' }}>
 
-        {/* Right: Results */}
-        <div style={{ minWidth: 0 }}>
-          <div className="studio-header" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              {/* Search */}
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--color-text-muted)' }} />
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="Search posts..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ paddingLeft: '32px', paddingRight: '12px', width: '200px', fontSize: '0.8rem', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-glass-border)' }}
-                />
-              </div>
-
-              <button className="btn btn-secondary" onClick={fetchPosts} title="Refresh" style={{ padding: '0.5rem', background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-glass-border)' }}>
-                <RefreshCw size={14} color="var(--color-text-muted)" />
+        {/* Top Summary Bar & Search */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          background: 'var(--color-bg-secondary)',
+          padding: '1rem 1.25rem',
+          borderRadius: '16px',
+          border: '1px solid var(--color-glass-border)'
+        }}>
+          {/* Status Filter Tabs */}
+          <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--color-bg-tertiary)', padding: '0.3rem', borderRadius: '10px' }}>
+            {[
+              { id: 'PUBLISHED', label: 'Published' },
+              { id: 'REVIEW', label: 'In Review' },
+              { id: 'DRAFT', label: 'Drafts' },
+              { id: 'ALL', label: 'All Posts' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setFilterStatus(tab.id)}
+                style={{
+                  padding: '0.4rem 0.9rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: filterStatus === tab.id ? 'var(--color-primary)' : 'transparent',
+                  color: filterStatus === tab.id ? '#fff' : 'var(--color-text-muted)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {tab.label}
               </button>
-            </div>
+            ))}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {isFetchingPosts ? (
-              // Skeletons
-              <>
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="glass-panel" style={{ padding: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', alignItems: 'center' }}>
-                      <Skeleton type="circle" width="24px" height="24px" />
-                      <div style={{ flex: 1 }}>
-                        <Skeleton type="text" width="40%" height="0.8rem" />
-                        <Skeleton type="text" width="20%" height="0.6rem" />
-                      </div>
-                    </div>
-                    <Skeleton type="text" width="100%" height="0.8rem" />
-                    <Skeleton type="text" width="90%" height="0.8rem" />
-                    <Skeleton type="text" width="95%" height="0.8rem" />
-                  </div>
-                ))}
-              </>
-            ) : posts.length === 0 ? (
-              <div className="glass-panel" style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem', padding: '2rem' }}>
-                No posts found.
+          {/* Right: Search & Refresh */}
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--color-text-muted)' }} />
+              <input
+                type="text"
+                className="input-field"
+                placeholder="Search posts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ paddingLeft: '32px', paddingRight: '12px', width: '220px', fontSize: '0.82rem', height: '36px' }}
+              />
+            </div>
+
+            <button className="btn btn-secondary" onClick={fetchPosts} title="Refresh" style={{ padding: '0.45rem', height: '36px', width: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <RefreshCw size={15} color="var(--color-text-muted)" />
+            </button>
+          </div>
+        </div>
+
+        {/* Posts Feed Grid / Flow */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
+          gap: '1rem'
+        }}>
+          {isFetchingPosts ? (
+            [1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="glass-panel" style={{ padding: '1rem', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Skeleton type="circle" width="32px" height="32px" />
+                  <Skeleton type="text" width="60px" height="18px" />
+                </div>
+                <Skeleton type="rect" width="100%" height="160px" style={{ borderRadius: '10px' }} />
+                <Skeleton type="text" width="90%" height="0.8rem" />
+                <Skeleton type="text" width="60%" height="0.8rem" />
               </div>
-            ) : posts.map(post => {
-              const statusColors = {
-                'DRAFT': { bg: 'rgba(59,130,246,0.12)', text: '#60a5fa', border: 'rgba(59,130,246,0.3)' },
-                'REVIEW': { bg: 'rgba(245,158,11,0.12)', text: '#fbbf24', border: 'rgba(245,158,11,0.3)' },
-                'PUBLISHED': { bg: 'rgba(16,185,129,0.12)', text: '#34d399', border: 'rgba(16,185,129,0.3)' },
-                'FAILED': { bg: 'rgba(239,68,68,0.12)', text: '#f87171', border: 'rgba(239,68,68,0.3)' },
-              };
-              const sc = statusColors[post.status] || statusColors['DRAFT'];
-              const timeAgo = post.created_at ? new Date(post.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+            ))
+          ) : posts.length === 0 ? (
+            <div className="glass-panel" style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.9rem', padding: '3.5rem 1.5rem', gridColumn: '1 / -1', borderRadius: '16px' }}>
+              <Sparkles size={32} color="var(--color-primary)" style={{ opacity: 0.5, marginBottom: '0.5rem' }} />
+              <p style={{ margin: 0, fontWeight: 500 }}>No posts found in this view.</p>
+            </div>
+          ) : posts.map(post => {
+            const statusColors = {
+              'DRAFT': { bg: 'rgba(59,130,246,0.12)', text: '#60a5fa', border: 'rgba(59,130,246,0.3)' },
+              'REVIEW': { bg: 'rgba(245,158,11,0.12)', text: '#fbbf24', border: 'rgba(245,158,11,0.3)' },
+              'PUBLISHED': { bg: 'rgba(16,185,129,0.15)', text: '#34d399', border: 'rgba(16,185,129,0.35)' },
+              'FAILED': { bg: 'rgba(239,68,68,0.12)', text: '#f87171', border: 'rgba(239,68,68,0.3)' },
+            };
+            const sc = statusColors[post.status] || statusColors['DRAFT'];
+            const timeAgo = post.created_at ? new Date(post.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+            
+            const mediaSrc = post.media_url 
+              ? (post.media_url.startsWith('http') ? post.media_url : `${import.meta.env.VITE_API_URL}${post.media_url}`)
+              : (post.media_urls && post.media_urls.length > 0 ? (post.media_urls[0].startsWith('http') ? post.media_urls[0] : `${import.meta.env.VITE_API_URL}${post.media_urls[0]}`) : null);
 
-              return (
-                <div
-                  key={post.id}
-                  style={{
-                    background: post.selected ? 'rgba(59,130,246,0.04)' : 'var(--color-glass)',
-                    border: `1px solid ${post.selected ? 'rgba(59,130,246,0.25)' : 'var(--color-glass-border)'}`,
-                    borderRadius: 'var(--radius-lg)',
-                    overflow: 'hidden',
-                    transition: 'all var(--transition-fast)',
-                    boxShadow: post.selected ? '0 0 0 1px rgba(59,130,246,0.15)' : '0 1px 4px rgba(0,0,0,0.1)'
-                  }}
-                >
-                  {/* Post Header */}
-                  <div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '1rem', borderBottom: '1px solid var(--color-glass-border)',
-                    background: 'rgba(0,0,0,0.1)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                      <div>
-                        <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                          {post.topic || 'Published Post'}
-                        </p>
-                        <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
-                          {timeAgo}
-                        </p>
-                      </div>
+            const isVideo = mediaSrc && mediaSrc.match(/\.(mp4|webm|ogg)$/i);
+            const platformName = post.published_platform ? post.published_platform.toLowerCase() : 'social';
+
+            return (
+              <div
+                key={post.id}
+                className="hover-card animate-fade-in"
+                style={{
+                  background: 'var(--color-bg-secondary)',
+                  border: '1px solid var(--color-glass-border)',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.06)'
+                }}
+              >
+                {/* Post Card Header */}
+                <div style={{
+                  padding: '0.85rem 1rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderBottom: '1px solid var(--color-glass-border)',
+                  background: 'rgba(255,255,255,0.02)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <div style={{
+                      width: '26px',
+                      height: '26px',
+                      borderRadius: '50%',
+                      background: platformName === 'instagram' ? 'linear-gradient(45deg, #f09433, #dc2743, #bc1888)' : '#1877F2',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+                    }}>
+                      {platformName === 'instagram' ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+                      )}
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{
-                        fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px',
-                        padding: '0.15rem 0.5rem', background: sc.bg, color: sc.text,
-                        borderRadius: '10px', border: `1px solid ${sc.border}`
-                      }}>
-                        {post.status}
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', lineHeight: 1.2 }}>
+                        {post.topic || 'Social Post'}
+                      </h4>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                        {timeAgo}
                       </span>
                     </div>
                   </div>
-                  {/* Minimal Post Actions */}
-                  <div style={{ padding: '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)' }}>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '75%' }}>
-                      {post.generated_content ? post.generated_content.substring(0, 90) + '...' : 'No content generated'}
-                    </p>
-                    <button 
-                      className="btn btn-primary" 
-                      onClick={() => setViewingPost(post)}
-                      style={{ padding: '0.35rem 0.85rem', fontSize: '0.75rem', borderRadius: '20px', background: 'rgba(59,130,246,0.15)', color: 'var(--color-primary)', border: '1px solid rgba(59,130,246,0.3)', boxShadow: 'none' }}
-                    >
-                      <Eye size={13} /> View
-                    </button>
-                  </div>
+
+                  <span style={{
+                    fontSize: '0.62rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.4px',
+                    padding: '0.18rem 0.55rem',
+                    background: sc.bg,
+                    color: sc.text,
+                    borderRadius: '20px',
+                    border: `1px solid ${sc.border}`
+                  }}>
+                    {post.status}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Media Preview if exists */}
+                {mediaSrc && (
+                  <div 
+                    onClick={() => setViewingPost(post)}
+                    style={{
+                      width: '100%',
+                      height: '170px',
+                      background: 'rgba(0,0,0,0.3)',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      position: 'relative'
+                    }}
+                  >
+                    {isVideo ? (
+                      <video src={mediaSrc} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                    ) : (
+                      <img src={mediaSrc} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )}
+                  </div>
+                )}
+
+                {/* Caption / Content preview */}
+                <div 
+                  onClick={() => setViewingPost(post)}
+                  style={{
+                    padding: '0.85rem 1rem',
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <p style={{
+                    margin: 0,
+                    fontSize: '0.82rem',
+                    color: 'var(--color-text)',
+                    lineHeight: '1.5',
+                    display: '-webkit-box',
+                    WebkitLineClamp: mediaSrc ? 3 : 5,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden'
+                  }}>
+                    {post.generated_content || 'No content generated'}
+                  </p>
+                </div>
+
+                {/* Card Actions Footer */}
+                <div style={{
+                  padding: '0.65rem 1rem',
+                  borderTop: '1px solid var(--color-glass-border)',
+                  background: 'rgba(0,0,0,0.06)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <button
+                    onClick={() => handleCopy(post.generated_content)}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.3rem 0.6rem', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem', borderRadius: '6px' }}
+                    title="Copy text"
+                  >
+                    <Copy size={12} /> Copy
+                  </button>
+
+                  <button
+                    onClick={() => setViewingPost(post)}
+                    className="btn btn-primary"
+                    style={{
+                      padding: '0.3rem 0.85rem',
+                      fontSize: '0.75rem',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem'
+                    }}
+                  >
+                    <Eye size={13} /> View Post
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
+
       </div>
 
       </SidebarLayout>
@@ -284,15 +456,18 @@ const History = () => {
       {viewingPost && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-          padding: '1rem'
-        }}>
-          <div className="glass-panel animate-fade-in" style={{
-            width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto',
+          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1000,
+          padding: '3rem 1rem 1.5rem',
+          boxSizing: 'border-box',
+          overflowY: 'auto'
+        }} onClick={() => { setViewingPost(null); setEditingId(null); }}>
+          <div className="glass-panel animate-slide-up hide-scrollbar" style={{
+            width: '100%', maxWidth: '580px', maxHeight: '86vh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
             background: 'var(--color-bg-secondary)', padding: 0,
-            boxShadow: '0 10px 40px rgba(0,0,0,0.3)', border: '1px solid var(--color-border)'
-          }}>
+            borderRadius: '16px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.4)', border: '1px solid var(--color-glass-border)'
+          }} onClick={e => e.stopPropagation()}>
             {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
@@ -331,7 +506,7 @@ const History = () => {
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: '1.5rem' }}>
+            <div className="hide-scrollbar" style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
               {editingId === viewingPost.id ? (
                 <div>
                   <label className="label">Post Content</label>
@@ -352,7 +527,7 @@ const History = () => {
               ) : (
                 <>
                   <p style={{ margin: 0, lineHeight: '1.7', fontSize: '0.95rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: '1.5rem' }}>
-                    {viewingPost.generated_content}
+                    {formatContentLineByLine(viewingPost.generated_content)}
                   </p>
                   
                   {viewingPost.media_url && (

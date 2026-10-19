@@ -18,6 +18,7 @@ html { font-size: 14px; }
   --color-glass-border: rgba(255, 255, 255, 0.06);
   --color-input-bg: rgba(0, 0, 0, 0.2);
   --color-bg-tertiary: rgba(255, 255, 255, 0.04);
+  --calendar-icon-filter: invert(1);
 
   /* Typography */
   --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -42,6 +43,7 @@ html { font-size: 14px; }
   --color-glass-border: rgba(0, 0, 0, 0.06);
   --color-input-bg: #ffffff;
   --color-bg-tertiary: rgba(0, 0, 0, 0.04);
+  --calendar-icon-filter: invert(0);
 }
 
 * {
@@ -276,3 +278,6 @@ option {
   }
 }
 
+
+.hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }

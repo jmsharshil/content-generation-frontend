@@ -1,3 +1,8 @@
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
 # Logs
 logs
 *.log
@@ -7,18 +12,26 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
+# Dependencies
+node_modules/
+
+# Production builds & caches
 dist
 dist-ssr
 *.local
+.cache/
+.parcel-cache/
+.eslintcache
 
-# Editor directories and files
+# Editor & OS files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.bak

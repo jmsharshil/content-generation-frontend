@@ -33,7 +33,6 @@ const History = () => {
 
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('PUBLISHED');
 
   useEffect(() => {
     if (location.state?.topic) {
@@ -44,11 +43,7 @@ const History = () => {
   const fetchPosts = async () => {
     setIsFetchingPosts(true);
     try {
-      const params = new URLSearchParams();
-      if (searchQuery) params.append('search', searchQuery);
-      if (filterStatus !== 'ALL') params.append('status', filterStatus);
-
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/?${params.toString()}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
       });
 
@@ -65,11 +60,19 @@ const History = () => {
   };
 
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      fetchPosts();
-    }, 500); // debounce search
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, filterStatus]);
+    fetchPosts();
+  }, []);
+
+  // Real-time client-side search filter across topic, caption content, and platform
+  const filteredPosts = posts.filter(post => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase().trim();
+    const topicMatch = post.topic && post.topic.toLowerCase().includes(query);
+    const contentMatch = post.generated_content && post.generated_content.toLowerCase().includes(query);
+    const platformMatch = post.published_platform && post.published_platform.toLowerCase().includes(query);
+    const statusMatch = post.status && post.status.toLowerCase().includes(query);
+    return topicMatch || contentMatch || platformMatch || statusMatch;
+  });
 
   const handleGenerate = async () => {
     if (!topic.trim()) { showToast('Please enter a topic.', 'info'); return; }
@@ -199,61 +202,53 @@ const History = () => {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '1100px', margin: '0 auto' }}>
 
-        {/* Top Summary Bar & Search */}
+        {/* Top Search Bar */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          flexWrap: 'wrap',
           gap: '1rem',
           background: 'var(--color-bg-secondary)',
-          padding: '1rem 1.25rem',
-          borderRadius: '16px',
+          padding: '0.85rem 1.25rem',
+          borderRadius: '14px',
           border: '1px solid var(--color-glass-border)'
         }}>
-          {/* Status Filter Tabs */}
-          <div style={{ display: 'flex', gap: '0.4rem', background: 'var(--color-bg-tertiary)', padding: '0.3rem', borderRadius: '10px' }}>
-            {[
-              { id: 'PUBLISHED', label: 'Published' },
-              { id: 'REVIEW', label: 'In Review' },
-              { id: 'DRAFT', label: 'Drafts' },
-              { id: 'ALL', label: 'All Posts' }
-            ].map(tab => (
+          {/* Full Search Bar */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, maxWidth: '450px' }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', color: 'var(--color-text-muted)' }} />
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Search by topic, caption text, or platform..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ paddingLeft: '38px', paddingRight: searchQuery ? '32px' : '14px', width: '100%', fontSize: '0.85rem', height: '38px' }}
+            />
+            {searchQuery && (
               <button
-                key={tab.id}
-                onClick={() => setFilterStatus(tab.id)}
+                onClick={() => setSearchQuery('')}
                 style={{
-                  padding: '0.4rem 0.9rem',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  borderRadius: '8px',
+                  position: 'absolute',
+                  right: '10px',
+                  background: 'transparent',
                   border: 'none',
+                  color: 'var(--color-text-muted)',
                   cursor: 'pointer',
-                  background: filterStatus === tab.id ? 'var(--color-primary)' : 'transparent',
-                  color: filterStatus === tab.id ? '#fff' : 'var(--color-text-muted)',
-                  transition: 'all 0.2s ease'
+                  padding: '2px',
+                  display: 'flex'
                 }}
+                title="Clear search"
               >
-                {tab.label}
+                <X size={15} />
               </button>
-            ))}
+            )}
           </div>
 
-          {/* Right: Search & Refresh */}
-          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--color-text-muted)' }} />
-              <input
-                type="text"
-                className="input-field"
-                placeholder="Search posts..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: '32px', paddingRight: '12px', width: '220px', fontSize: '0.82rem', height: '36px' }}
-              />
-            </div>
-
-            <button className="btn btn-secondary" onClick={fetchPosts} title="Refresh" style={{ padding: '0.45rem', height: '36px', width: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+              {filteredPosts.length} post{filteredPosts.length === 1 ? '' : 's'}
+            </span>
+            <button className="btn btn-secondary" onClick={fetchPosts} title="Refresh posts" style={{ padding: '0.45rem', height: '38px', width: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px' }}>
               <RefreshCw size={15} color="var(--color-text-muted)" />
             </button>
           </div>
@@ -277,12 +272,14 @@ const History = () => {
                 <Skeleton type="text" width="60%" height="0.8rem" />
               </div>
             ))
-          ) : posts.length === 0 ? (
+          ) : filteredPosts.length === 0 ? (
             <div className="glass-panel" style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.9rem', padding: '3.5rem 1.5rem', gridColumn: '1 / -1', borderRadius: '16px' }}>
               <Sparkles size={32} color="var(--color-primary)" style={{ opacity: 0.5, marginBottom: '0.5rem' }} />
-              <p style={{ margin: 0, fontWeight: 500 }}>No posts found in this view.</p>
+              <p style={{ margin: 0, fontWeight: 500 }}>
+                {searchQuery ? `No posts matching "${searchQuery}"` : 'No posts found.'}
+              </p>
             </div>
-          ) : posts.map(post => {
+          ) : filteredPosts.map(post => {
             const statusColors = {
               'DRAFT': { bg: 'rgba(59,130,246,0.12)', text: '#60a5fa', border: 'rgba(59,130,246,0.3)' },
               'REVIEW': { bg: 'rgba(245,158,11,0.12)', text: '#fbbf24', border: 'rgba(245,158,11,0.3)' },
@@ -365,23 +362,27 @@ const History = () => {
                   </span>
                 </div>
 
-                {/* Media Preview if exists */}
+                {/* Media Preview if exists - Proper Full Aspect Ratio */}
                 {mediaSrc && (
                   <div 
                     onClick={() => setViewingPost(post)}
                     style={{
                       width: '100%',
-                      height: '170px',
-                      background: 'rgba(0,0,0,0.3)',
+                      aspectRatio: '1 / 1',
+                      background: 'rgba(0, 0, 0, 0.25)',
                       overflow: 'hidden',
                       cursor: 'pointer',
-                      position: 'relative'
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderBottom: '1px solid var(--color-glass-border)'
                     }}
                   >
                     {isVideo ? (
-                      <video src={mediaSrc} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                      <video src={mediaSrc} style={{ width: '100%', height: '100%', objectFit: 'contain' }} muted />
                     ) : (
-                      <img src={mediaSrc} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={mediaSrc} alt="Post Media" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     )}
                   </div>
                 )}

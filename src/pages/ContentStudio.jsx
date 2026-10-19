@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
-import { Sparkles, Calendar as CalendarIcon, Check, Clock, Copy, X, Edit2, Image as ImageIcon, Video as VideoIcon, List } from 'lucide-react';
+import { Sparkles, Calendar as CalendarIcon, Check, Clock, Copy, X, Edit2, Image as ImageIcon, Video as VideoIcon, List, Send } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
 import { useToast } from '../context/ToastContext';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -96,8 +96,10 @@ const ContentStudio = () => {
       if (response.ok) {
         updateLoader({ progress: 100, subText: 'Ready!' });
         const data = await response.json();
-        setGeneratedOptions(data.options || []);
-        sessionStorage.setItem('cs_generatedOptions', JSON.stringify(data.options || []));
+        const rawOptions = data.options || [];
+        const formattedOpts = rawOptions.map(opt => formatContentLineByLine(opt));
+        setGeneratedOptions(formattedOpts);
+        sessionStorage.setItem('cs_generatedOptions', JSON.stringify(formattedOpts));
         setMediaUrls(data.media_urls || []);
         sessionStorage.setItem('cs_mediaUrls', JSON.stringify(data.media_urls || []));
         setSelectedOptionIdx(null);
@@ -122,9 +124,10 @@ const ContentStudio = () => {
     showLoader('Approving & Scheduling...');
     try {
       const scheduledAt = new Date(`${scheduleDate}T${scheduleTime}`).toISOString();
+      const contentToSend = formatContentLineByLine(generatedOptions[selectedOptionIdx]);
       const payload = {
         topic,
-        content: generatedOptions[selectedOptionIdx],
+        content: contentToSend,
         media_url: mediaUrls[selectedOptionIdx] || null,
         scheduled_at: scheduledAt,
         published_platform: schedulePlatform
@@ -154,6 +157,94 @@ const ContentStudio = () => {
         hideLoader(); showToast('Failed to schedule.', 'error');
       }
     } catch (error) { hideLoader(); showToast('Network error.', 'error'); }
+  };
+
+  const handlePublishNow = async () => {
+    if (selectedOptionIdx === null) { showToast('Select an option first.', 'info'); return; }
+
+    const targetName = schedulePlatform === 'both' ? 'Facebook & Instagram' : (schedulePlatform === 'instagram' ? 'Instagram' : 'Facebook');
+    showLoader(`Publishing directly to ${targetName}...`, 15, 'Preparing media assets & captions...');
+
+    let currentProgress = 15;
+    const progressInterval = setInterval(() => {
+      currentProgress += Math.random() * 10 + 5;
+      if (currentProgress > 90) currentProgress = 90;
+
+      let sub = 'Connecting to Meta Graph API...';
+      if (currentProgress > 70) {
+        sub = `Uploading media and publishing to ${targetName}...`;
+      } else if (currentProgress > 45) {
+        sub = 'Validating page permissions & tokens...';
+      } else if (currentProgress > 25) {
+        sub = 'Structuring post format & hashtags...';
+      }
+
+      updateLoader({ progress: currentProgress, subText: sub });
+    }, 380);
+
+    try {
+      const contentToSend = formatContentLineByLine(generatedOptions[selectedOptionIdx]);
+      // 1. Approve post first
+      const approvePayload = {
+        topic,
+        content: contentToSend,
+        media_url: mediaUrls[selectedOptionIdx] || null,
+        scheduled_at: new Date().toISOString(),
+        published_platform: schedulePlatform
+      };
+
+      const approveRes = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/approve-schedule/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: JSON.stringify(approvePayload)
+      });
+
+      if (!approveRes.ok) {
+        const err = await approveRes.json();
+        throw new Error(err.error || 'Failed to approve post.');
+      }
+
+      const createdPost = await approveRes.json();
+
+      // 2. Publish post immediately to social platform
+      const publishRes = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${createdPost.id}/publish/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
+        },
+        body: JSON.stringify({ platform: schedulePlatform })
+      });
+
+      clearInterval(progressInterval);
+
+      if (publishRes.ok) {
+        updateLoader({ progress: 100, subText: 'Published successfully!' });
+        setTimeout(() => {
+          hideLoader();
+          showToast('Published successfully to social media!', 'success');
+          setGeneratedOptions([]);
+          sessionStorage.removeItem('cs_generatedOptions');
+          setMediaUrls([]);
+          sessionStorage.removeItem('cs_mediaUrls');
+          setSelectedOptionIdx(null);
+          setScheduleDate('');
+          setScheduleTime('');
+          fetchScheduledPosts();
+        }, 350);
+      } else {
+        const pubErr = await publishRes.json();
+        hideLoader();
+        showToast(pubErr.error || 'Failed to publish directly.', 'error');
+      }
+    } catch (error) {
+      clearInterval(progressInterval);
+      hideLoader();
+      showToast(error.message || 'Error publishing post.', 'error');
+    }
   };
 
   const handleUpdateSchedule = async (postId) => {
@@ -510,7 +601,7 @@ const ContentStudio = () => {
           }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--color-primary)' }}>
-                <CalendarIcon size={20} /> Schedule Post
+                <Send size={20} /> Publish or Schedule Post
               </h2>
               <button className="btn btn-secondary" style={{ padding: '0.4rem', borderRadius: '8px' }} onClick={() => setSelectedOptionIdx(null)}>
                 <X size={18} />
@@ -562,27 +653,83 @@ const ContentStudio = () => {
               {/* Right Column: Controls */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                 <div>
-                  <label className="label" style={{ fontSize: '0.78rem', marginBottom: '0.25rem', display: 'block' }}>Date</label>
-                  <input type="date" className="input-field" value={scheduleDate} onChange={e => setScheduleDate(e.target.value)} style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }} />
-                </div>
-                <div>
-                  <label className="label" style={{ fontSize: '0.78rem', marginBottom: '0.25rem', display: 'block' }}>Time</label>
-                  <input type="time" className="input-field" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }} />
-                </div>
-                <div>
-                  <label className="label" style={{ fontSize: '0.78rem', marginBottom: '0.25rem', display: 'block' }}>Platform</label>
+                  <label className="label" style={{ fontSize: '0.78rem', marginBottom: '0.25rem', display: 'block' }}>Target Platform</label>
                   <select className="input-field" value={schedulePlatform} onChange={e => setSchedulePlatform(e.target.value)} style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}>
                     <option value="both">Both (Facebook & Instagram)</option>
                     <option value="facebook">Facebook Only</option>
                     <option value="instagram">Instagram Only</option>
                   </select>
                 </div>
+
+                <div style={{
+                  padding: '0.75rem',
+                  background: 'rgba(59, 130, 246, 0.05)',
+                  border: '1px solid var(--color-glass-border)',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.6rem'
+                }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Schedule Options (Optional)
+                  </span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div>
+                      <label className="label" style={{ fontSize: '0.72rem', marginBottom: '0.2rem', display: 'block' }}>Date</label>
+                      <input type="date" className="input-field" value={scheduleDate} onChange={e => setScheduleDate(e.target.value)} style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }} />
+                    </div>
+                    <div>
+                      <label className="label" style={{ fontSize: '0.72rem', marginBottom: '0.2rem', display: 'block' }}>Time</label>
+                      <input type="time" className="input-field" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} style={{ padding: '0.4rem 0.6rem', fontSize: '0.8rem' }} />
+                    </div>
+                  </div>
+                </div>
                 
                 <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <button className="btn btn-primary" style={{ padding: '0.65rem 1rem', fontSize: '0.9rem', fontWeight: 600, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', borderRadius: '10px' }} onClick={() => { handleApproveAndSchedule(); setSelectedOptionIdx(null); }}>
-                    <Check size={18} /> Approve & Schedule
+                  {/* Option 1: Direct Post Now */}
+                  <button 
+                    className="btn btn-primary" 
+                    style={{
+                      padding: '0.65rem 1rem',
+                      fontSize: '0.88rem',
+                      fontWeight: 600,
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      borderRadius: '10px',
+                      background: 'linear-gradient(135deg, #10b981, #059669)',
+                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+                    }} 
+                    onClick={() => handlePublishNow()}
+                  >
+                    <Send size={16} /> Direct Post Now
                   </button>
-                  <button className="btn btn-secondary" style={{ padding: '0.5rem', fontSize: '0.82rem', width: '100%', borderRadius: '10px' }} onClick={() => setSelectedOptionIdx(null)}>
+
+                  {/* Option 2: Schedule Later */}
+                  <button 
+                    className="btn" 
+                    style={{
+                      padding: '0.6rem 1rem',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      borderRadius: '10px',
+                      background: 'rgba(59,130,246,0.15)',
+                      color: 'var(--color-primary)',
+                      border: '1px solid rgba(59,130,246,0.3)'
+                    }} 
+                    onClick={() => handleApproveAndSchedule()}
+                  >
+                    <CalendarIcon size={16} /> Schedule for Later
+                  </button>
+
+                  <button className="btn btn-secondary" style={{ padding: '0.45rem', fontSize: '0.8rem', width: '100%', borderRadius: '10px' }} onClick={() => setSelectedOptionIdx(null)}>
                     Cancel
                   </button>
                 </div>

@@ -483,6 +483,24 @@ const AdCampaigns = () => {
               {selectedPost ? (
                 <>
                   <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>The text and media from your generated post will be used automatically.</p>
+                  
+                  {(() => {
+                    const postMedia = selectedPost.media_url 
+                      ? (selectedPost.media_url.startsWith('http') ? selectedPost.media_url : `${import.meta.env.VITE_API_URL}${selectedPost.media_url}`)
+                      : (selectedPost.media_urls && selectedPost.media_urls.length > 0 ? (selectedPost.media_urls[0].startsWith('http') ? selectedPost.media_urls[0] : `${import.meta.env.VITE_API_URL}${selectedPost.media_urls[0]}`) : null);
+                    const isVideo = postMedia && postMedia.match(/\.(mp4|webm|ogg|mov)$/i);
+                    
+                    return postMedia ? (
+                      <div style={{ width: '100%', maxHeight: '200px', borderRadius: 'var(--radius-md)', overflow: 'hidden', marginBottom: '0.75rem', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {isVideo ? (
+                          <video src={postMedia} style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }} controls autoPlay muted loop />
+                        ) : (
+                          <img src={postMedia} alt="Post Media" style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }} />
+                        )}
+                      </div>
+                    ) : null;
+                  })()}
+
                   <p style={{ margin: 0, fontSize: '0.7rem', padding: '0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '4px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--color-text-muted)' }}>
                     "{formatContentLineByLine(selectedPost?.generated_content)}"
                   </p>
@@ -1102,28 +1120,46 @@ const AdCampaigns = () => {
                 No published posts available to boost. Go to Content Studio to publish a post first!
               </div>
             ) : (
-              posts.map(post => (
-                <div key={post.id} className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)' }}>
-                      {post.topic && post.topic.trim() ? post.topic : (
-                        post.generated_content ? (
-                          post.generated_content.split('\n')[0].replace(/^[#* \-_]+/, '').slice(0, 45) + (post.generated_content.split('\n')[0].length > 45 ? '...' : '')
-                        ) : 'Social Post'
-                      )}
-                    </span>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
-                       {post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}
-                    </span>
+              posts.map(post => {
+                const mediaSrc = post.media_url 
+                  ? (post.media_url.startsWith('http') ? post.media_url : `${import.meta.env.VITE_API_URL}${post.media_url}`)
+                  : (post.media_urls && post.media_urls.length > 0 ? (post.media_urls[0].startsWith('http') ? post.media_urls[0] : `${import.meta.env.VITE_API_URL}${post.media_urls[0]}`) : null);
+                const isVideo = mediaSrc && mediaSrc.match(/\.(mp4|webm|ogg|mov)$/i);
+
+                return (
+                  <div key={post.id} className="glass-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
+                    {mediaSrc && (
+                      <div style={{ width: '100%', height: '180px', background: 'rgba(0,0,0,0.2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {isVideo ? (
+                          <video src={mediaSrc} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                        ) : (
+                          <img src={mediaSrc} alt="Post Media" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        )}
+                      </div>
+                    )}
+                    <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                          {post.topic && post.topic.trim() ? post.topic : (
+                            post.generated_content ? (
+                              post.generated_content.split('\n')[0].replace(/^[#* \-_]+/, '').slice(0, 45) + (post.generated_content.split('\n')[0].length > 45 ? '...' : '')
+                            ) : 'Social Post'
+                          )}
+                        </span>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+                           {post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-text)', margin: '0 0 1rem 0', flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {post.generated_content}
+                      </p>
+                      <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => handleBoostClick(post)}>
+                        <Rocket size={14} /> Boost Post
+                      </button>
+                    </div>
                   </div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text)', margin: '0 0 1rem 0', flex: 1, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {post.generated_content}
-                  </p>
-                  <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => handleBoostClick(post)}>
-                    <Rocket size={14} /> Boost Post
-                  </button>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </>

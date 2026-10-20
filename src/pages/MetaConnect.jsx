@@ -28,8 +28,8 @@ const MetaConnect = () => {
         if (data.is_connected && !data.page_id) {
           fetchPages();
         } else if (data.is_connected && data.page_id) {
-          // If they already have a meta account and a page selected, auto-redirect!
-          navigate('/dashboard');
+          // If they already have a meta account and a page selected, redirect to profile
+          navigate('/profile');
         }
       }
     } catch (err) {
@@ -54,10 +54,12 @@ const MetaConnect = () => {
   };
 
   useEffect(() => {
-    fetchMetaStatus();
-    
     const code = searchParams.get('code');
-    if (code) handleMetaCallback(code);
+    if (code) {
+      handleMetaCallback(code);
+    } else {
+      fetchMetaStatus();
+    }
   }, [searchParams]);
 
   const handleMetaCallback = async (code) => {
@@ -73,9 +75,9 @@ const MetaConnect = () => {
       });
       if (response.ok) {
         hideLoader();
-        showToast('Meta account linked!', 'success');
-        fetchMetaStatus();
-        setTimeout(() => navigate('/dashboard'), 2000);
+        showToast('Meta account linked! Please select your page.', 'success');
+        setIsConnected(true);
+        fetchPages();
       } else {
         hideLoader();
         showToast('Failed to link Meta account.', 'error');
@@ -128,8 +130,8 @@ const MetaConnect = () => {
         hideLoader();
         showToast('Page selected successfully!', 'success');
         setTimeout(() => {
-          navigate('/dashboard');
-        }, 2000);
+          navigate('/profile');
+        }, 1500);
       } else {
         hideLoader();
         showToast('Failed to save page.', 'error');
@@ -196,6 +198,22 @@ const MetaConnect = () => {
               style={{ width: '100%', justifyContent: 'center' }}
             >
               Save & Continue
+            </button>
+
+            <button 
+              onClick={() => navigate('/profile')}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--color-text-muted)',
+                fontSize: '0.8rem',
+                marginTop: '0.75rem',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              Skip to Profile
             </button>
           </div>
         )}

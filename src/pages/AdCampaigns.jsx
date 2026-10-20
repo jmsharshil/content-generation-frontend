@@ -1105,7 +1105,13 @@ const AdCampaigns = () => {
               posts.map(post => (
                 <div key={post.id} className="glass-panel" style={{ display: 'flex', flexDirection: 'column' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)' }}>{post.topic || 'Untitled'}</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                      {post.topic && post.topic.trim() ? post.topic : (
+                        post.generated_content ? (
+                          post.generated_content.split('\n')[0].replace(/^[#* \-_]+/, '').slice(0, 45) + (post.generated_content.split('\n')[0].length > 45 ? '...' : '')
+                        ) : 'Social Post'
+                      )}
+                    </span>
                     <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
                        {post.created_at ? new Date(post.created_at).toLocaleDateString() : ''}
                     </span>

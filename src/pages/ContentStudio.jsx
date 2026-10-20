@@ -98,6 +98,9 @@ const ContentStudio = () => {
         const data = await response.json();
         const rawOptions = data.options || [];
         const formattedOpts = rawOptions.map(opt => formatContentLineByLine(opt));
+        if (data.topic) {
+          setTopic(data.topic);
+        }
         setGeneratedOptions(formattedOpts);
         sessionStorage.setItem('cs_generatedOptions', JSON.stringify(formattedOpts));
         setMediaUrls(data.media_urls || []);
@@ -145,10 +148,15 @@ const ContentStudio = () => {
       if (response.ok) {
         hideLoader(); 
         showToast('Post scheduled! AI learned your preference.', 'success');
-        setGeneratedOptions([]);
-        sessionStorage.removeItem('cs_generatedOptions');
-        setMediaUrls([]);
-        sessionStorage.removeItem('cs_mediaUrls');
+        
+        // Remove only the scheduled option so the user can schedule remaining options
+        const remainingOpts = generatedOptions.filter((_, idx) => idx !== selectedOptionIdx);
+        const remainingMedia = mediaUrls.filter((_, idx) => idx !== selectedOptionIdx);
+        
+        setGeneratedOptions(remainingOpts);
+        sessionStorage.setItem('cs_generatedOptions', JSON.stringify(remainingOpts));
+        setMediaUrls(remainingMedia);
+        sessionStorage.setItem('cs_mediaUrls', JSON.stringify(remainingMedia));
         setSelectedOptionIdx(null);
         setScheduleDate('');
         setScheduleTime('');
@@ -226,10 +234,15 @@ const ContentStudio = () => {
         setTimeout(() => {
           hideLoader();
           showToast('Published successfully to social media!', 'success');
-          setGeneratedOptions([]);
-          sessionStorage.removeItem('cs_generatedOptions');
-          setMediaUrls([]);
-          sessionStorage.removeItem('cs_mediaUrls');
+          
+          // Remove only the published option so user can schedule/publish the others
+          const remainingOpts = generatedOptions.filter((_, idx) => idx !== selectedOptionIdx);
+          const remainingMedia = mediaUrls.filter((_, idx) => idx !== selectedOptionIdx);
+
+          setGeneratedOptions(remainingOpts);
+          sessionStorage.setItem('cs_generatedOptions', JSON.stringify(remainingOpts));
+          setMediaUrls(remainingMedia);
+          sessionStorage.setItem('cs_mediaUrls', JSON.stringify(remainingMedia));
           setSelectedOptionIdx(null);
           setScheduleDate('');
           setScheduleTime('');

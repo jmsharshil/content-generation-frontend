@@ -618,6 +618,27 @@ const History = () => {
                 </div>
               ) : (
                 <>
+                  {/* Metadata Tags */}
+                  {(viewingPost.category || viewingPost.fb_objective || viewingPost.insta_objective) && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', marginBottom: '1rem' }}>
+                      {viewingPost.category && (
+                        <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', borderRadius: '6px', background: 'rgba(59,130,246,0.12)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.25)', fontWeight: 500 }}>
+                          Category: {viewingPost.category}
+                        </span>
+                      )}
+                      {viewingPost.fb_objective && (
+                        <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', borderRadius: '6px', background: 'rgba(24,119,242,0.12)', color: '#38bdf8', border: '1px solid rgba(24,119,242,0.25)', fontWeight: 500 }}>
+                          FB: {viewingPost.fb_objective}
+                        </span>
+                      )}
+                      {viewingPost.insta_objective && (
+                        <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', borderRadius: '6px', background: 'rgba(220,39,67,0.12)', color: '#f472b6', border: '1px solid rgba(220,39,67,0.25)', fontWeight: 500 }}>
+                          IG: {viewingPost.insta_objective}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <p style={{ margin: 0, lineHeight: '1.7', fontSize: '0.95rem', color: 'var(--color-text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: '1.5rem' }}>
                     {formatContentLineByLine(viewingPost.generated_content)}
                   </p>

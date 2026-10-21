@@ -15,6 +15,10 @@ const ContentStudio = () => {
     return location.state?.topic || sessionStorage.getItem('bs_topic') || '';
   });
 
+  const [category, setCategory] = useState(() => sessionStorage.getItem('bs_category') || '');
+  const [fbObjective, setFbObjective] = useState(() => sessionStorage.getItem('bs_fbObjective') || '');
+  const [instaObjective, setInstaObjective] = useState(() => sessionStorage.getItem('bs_instaObjective') || '');
+
   useEffect(() => {
     if (location.state?.topic) {
       setTopic(location.state.topic);
@@ -33,9 +37,46 @@ const ContentStudio = () => {
               setTopic(data.topics);
               sessionStorage.setItem('bs_topic', data.topics);
             }
+            if (data?.default_category) {
+              setCategory(data.default_category);
+              sessionStorage.setItem('bs_category', data.default_category);
+            }
+            if (data?.default_fb_objective) {
+              setFbObjective(data.default_fb_objective);
+              sessionStorage.setItem('bs_fbObjective', data.default_fb_objective);
+            }
+            if (data?.default_insta_objective) {
+              setInstaObjective(data.default_insta_objective);
+              sessionStorage.setItem('bs_instaObjective', data.default_insta_objective);
+            }
           })
           .catch(() => {});
       }
+    }
+
+    // Also ensure category / objectives are fetched if missing
+    if (!category || !fbObjective || !instaObjective) {
+      fetch(`${import.meta.env.VITE_API_URL}/api/knowledge-base/`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            if (!category && data.default_category) {
+              setCategory(data.default_category);
+              sessionStorage.setItem('bs_category', data.default_category);
+            }
+            if (!fbObjective && data.default_fb_objective) {
+              setFbObjective(data.default_fb_objective);
+              sessionStorage.setItem('bs_fbObjective', data.default_fb_objective);
+            }
+            if (!instaObjective && data.default_insta_objective) {
+              setInstaObjective(data.default_insta_objective);
+              sessionStorage.setItem('bs_instaObjective', data.default_insta_objective);
+            }
+          }
+        })
+        .catch(() => {});
     }
   }, [location.state]);
   const [generatedOptions, setGeneratedOptions] = useState(() => {
@@ -159,16 +200,31 @@ const ContentStudio = () => {
     if (selectedOptionIdx === null) { showToast('Select an option first.', 'info'); return; }
     if (!scheduleDate || !scheduleTime) { showToast('Please select a date and time.', 'info'); return; }
     
+    const scheduledDateTime = new Date(`${scheduleDate}T${scheduleTime}`);
+    if (isNaN(scheduledDateTime.getTime())) {
+      showToast('Invalid schedule date or time format.', 'error');
+      return;
+    }
+
+    if (scheduledDateTime.getTime() <= Date.now()) {
+      showToast('Scheduled time must be in the future. Or click "Direct Post Now".', 'info');
+      return;
+    }
+
     showLoader('Approving & Scheduling...');
     try {
-      const scheduledAt = new Date(`${scheduleDate}T${scheduleTime}`).toISOString();
+      // Send as explicit Indian Standard Time (IST: UTC+05:30)
+      const scheduledAt = `${scheduleDate}T${scheduleTime.length === 5 ? scheduleTime + ':00' : scheduleTime}+05:30`;
       const contentToSend = formatContentLineByLine(generatedOptions[selectedOptionIdx]);
       const payload = {
-        topic,
+        topic: topic || 'Scheduled Post',
         content: contentToSend,
         media_url: mediaUrls[selectedOptionIdx] || null,
         scheduled_at: scheduledAt,
-        published_platform: schedulePlatform
+        published_platform: schedulePlatform,
+        category: category || 'Product',
+        fb_objective: fbObjective || 'Awareness',
+        insta_objective: instaObjective || 'Brand Awareness'
       };
       
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/approve-schedule/`, {
@@ -197,9 +253,15 @@ const ContentStudio = () => {
         setScheduleTime('');
         fetchScheduledPosts();
       } else {
-        hideLoader(); showToast('Failed to schedule.', 'error');
+        const errData = await response.json().catch(() => ({}));
+        hideLoader();
+        const msg = errData.error || errData.detail || errData.message || (typeof errData === 'object' ? Object.values(errData)[0] : null) || 'Failed to schedule.';
+        showToast(typeof msg === 'string' ? msg : JSON.stringify(msg), 'error');
       }
-    } catch (error) { hideLoader(); showToast('Network error.', 'error'); }
+    } catch (error) { 
+      hideLoader(); 
+      showToast(error.message || 'Network error.', 'error'); 
+    }
   };
 
   const handlePublishNow = async () => {
@@ -227,13 +289,18 @@ const ContentStudio = () => {
 
     try {
       const contentToSend = formatContentLineByLine(generatedOptions[selectedOptionIdx]);
+      const nowIso = new Date().toISOString();
       // 1. Approve post first
       const approvePayload = {
-        topic,
+        topic: topic || 'Social Post',
         content: contentToSend,
         media_url: mediaUrls[selectedOptionIdx] || null,
-        scheduled_at: new Date().toISOString(),
-        published_platform: schedulePlatform
+        scheduled_at: nowIso,
+        published_at: nowIso,
+        published_platform: schedulePlatform,
+        category: category || 'Product',
+        fb_objective: fbObjective || 'Awareness',
+        insta_objective: instaObjective || 'Brand Awareness'
       };
 
       const approveRes = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/approve-schedule/`, {
@@ -299,7 +366,8 @@ const ContentStudio = () => {
     if (!editScheduleDate || !editScheduleTime) { showToast('Please select a date and time.', 'info'); return; }
     showLoader('Updating Schedule...');
     try {
-      const scheduledAt = new Date(`${editScheduleDate}T${editScheduleTime}`).toISOString();
+      // Send as explicit Indian Standard Time (IST: UTC+05:30)
+      const scheduledAt = `${editScheduleDate}T${editScheduleTime.length === 5 ? editScheduleTime + ':00' : editScheduleTime}+05:30`;
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/${postId}/`, {
         method: 'PATCH',
         headers: {

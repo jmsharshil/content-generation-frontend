@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SidebarLayout from '../components/SidebarLayout';
-import { Sparkles, CheckSquare, Square, ThumbsUp, ThumbsDown, Edit3, Send, Hash, RefreshCw, Copy, Search, Filter, Eye, X } from 'lucide-react';
+import { Sparkles, CheckSquare, Square, ThumbsUp, ThumbsDown, Edit3, Send, Hash, RefreshCw, Copy, Search, Filter, Eye, X, Clock } from 'lucide-react';
 import { useLoader } from '../context/LoaderContext';
 import { useToast } from '../context/ToastContext';
 import { useLocation } from 'react-router-dom';
@@ -283,11 +283,28 @@ const History = () => {
             const statusColors = {
               'DRAFT': { bg: 'rgba(59,130,246,0.12)', text: '#60a5fa', border: 'rgba(59,130,246,0.3)' },
               'REVIEW': { bg: 'rgba(245,158,11,0.12)', text: '#fbbf24', border: 'rgba(245,158,11,0.3)' },
+              'APPROVED': { bg: 'rgba(59,130,246,0.15)', text: '#3b82f6', border: 'rgba(59,130,246,0.4)' },
               'PUBLISHED': { bg: 'rgba(16,185,129,0.15)', text: '#34d399', border: 'rgba(16,185,129,0.35)' },
               'FAILED': { bg: 'rgba(239,68,68,0.12)', text: '#f87171', border: 'rgba(239,68,68,0.3)' },
             };
             const sc = statusColors[post.status] || statusColors['DRAFT'];
             const timeAgo = post.created_at ? new Date(post.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+            
+            const isApproved = post.status === 'APPROVED';
+            const isPublished = post.status === 'PUBLISHED';
+            const scheduledTimeStr = post.scheduled_at 
+              ? new Date(post.scheduled_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) 
+              : null;
+            const publishedTimeStr = post.published_at 
+              ? new Date(post.published_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) 
+              : null;
+
+            // When a post is scheduled and published, prioritize showing its scheduled time
+            const displayTime = isApproved
+              ? (scheduledTimeStr || timeAgo)
+              : (isPublished && (scheduledTimeStr || publishedTimeStr)
+                  ? (scheduledTimeStr || publishedTimeStr)
+                  : timeAgo);
             
             const mediaSrc = post.media_url 
               ? (post.media_url.startsWith('http') ? post.media_url : `${import.meta.env.VITE_API_URL}${post.media_url}`)
@@ -302,13 +319,13 @@ const History = () => {
                 className="hover-card animate-fade-in"
                 style={{
                   background: 'var(--color-bg-secondary)',
-                  border: '1px solid var(--color-glass-border)',
+                  border: isApproved ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid var(--color-glass-border)',
                   borderRadius: '16px',
                   display: 'flex',
                   flexDirection: 'column',
                   overflow: 'hidden',
                   transition: 'all 0.2s ease',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.06)'
+                  boxShadow: isApproved ? '0 4px 18px rgba(59, 130, 246, 0.12)' : '0 4px 16px rgba(0,0,0,0.06)'
                 }}
               >
                 {/* Post Card Header */}
@@ -318,7 +335,7 @@ const History = () => {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   borderBottom: '1px solid var(--color-glass-border)',
-                  background: 'rgba(255,255,255,0.02)'
+                  background: isApproved ? 'rgba(59, 130, 246, 0.04)' : 'rgba(255,255,255,0.02)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                     {platformName === 'both' ? (
@@ -383,9 +400,24 @@ const History = () => {
                       <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', lineHeight: 1.2 }}>
                         {post.topic || 'Social Post'}
                       </h4>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
-                        {timeAgo}
-                      </span>
+                      {(isApproved || (isPublished && (post.scheduled_at || post.published_at))) ? (
+                        <span style={{ 
+                          fontSize: '0.68rem', 
+                          color: isApproved ? '#60a5fa' : 'var(--color-text-muted)', 
+                          fontWeight: isApproved ? 500 : 400, 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '3px', 
+                          marginTop: '2px' 
+                        }}>
+                          {isApproved && <Clock size={11} />}
+                          {displayTime}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                          {timeAgo}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -548,9 +580,15 @@ const History = () => {
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text)' }}>{viewingPost.topic || 'Review Post'}</h3>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.1rem' }}>
-                    {viewingPost.status === 'PUBLISHED' && viewingPost.published_platform 
-                      ? `Published to ${viewingPost.published_platform}` 
-                      : `Ready for ${publishPlatform}`}
+                    {viewingPost.status === 'PUBLISHED'
+                      ? (viewingPost.scheduled_at 
+                          ? `Published (${viewingPost.published_platform || 'Social'}) • Scheduled: ${new Date(viewingPost.scheduled_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+                          : (viewingPost.published_at 
+                              ? `Published (${viewingPost.published_platform || 'Social'}) • ${new Date(viewingPost.published_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+                              : `Published to ${viewingPost.published_platform || 'Social'}`))
+                      : (viewingPost.status === 'APPROVED' && viewingPost.scheduled_at)
+                        ? `Scheduled for: ${new Date(viewingPost.scheduled_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                        : `Ready for ${publishPlatform}`}
                   </div>
                 </div>
               </div>

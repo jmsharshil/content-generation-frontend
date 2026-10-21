@@ -11,7 +11,33 @@ const ContentStudio = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [topic, setTopic] = useState(location.state?.topic || '');
+  const [topic, setTopic] = useState(() => {
+    return location.state?.topic || sessionStorage.getItem('bs_topic') || '';
+  });
+
+  useEffect(() => {
+    if (location.state?.topic) {
+      setTopic(location.state.topic);
+      sessionStorage.setItem('bs_topic', location.state.topic);
+    } else if (!topic) {
+      const saved = sessionStorage.getItem('bs_topic');
+      if (saved) setTopic(saved);
+      else {
+        // Fallback fetch from knowledge-base if nothing in session
+        fetch(`${import.meta.env.VITE_API_URL}/api/knowledge-base/`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
+        })
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data?.topics) {
+              setTopic(data.topics);
+              sessionStorage.setItem('bs_topic', data.topics);
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [location.state]);
   const [generatedOptions, setGeneratedOptions] = useState(() => {
     const saved = sessionStorage.getItem('cs_generatedOptions');
     return saved ? JSON.parse(saved) : [];
@@ -60,6 +86,12 @@ const ContentStudio = () => {
   };
 
   const handleGenerate = async () => {
+    const currentTopic = topic || sessionStorage.getItem('bs_topic') || '';
+    if (!currentTopic || !currentTopic.trim()) {
+      showToast('Please select a topic in Brand Setup first before generating content.', 'info');
+      return;
+    }
+
     showLoader('Generating options with AI...', 10, 'Analyzing brand context & tone...');
     
     let currentProgress = 10;
@@ -88,7 +120,7 @@ const ContentStudio = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`
         },
-        body: JSON.stringify({})
+        body: JSON.stringify({ topic: currentTopic })
       });
 
       clearInterval(progressInterval);
@@ -111,7 +143,10 @@ const ContentStudio = () => {
           showToast('Generated 5 options!', 'success');
         }, 300);
       } else {
-        hideLoader(); showToast('Failed to generate.', 'error');
+        const errData = await response.json().catch(() => ({}));
+        hideLoader();
+        const errMsg = errData.error || errData.detail || 'Please first select topic then generate';
+        showToast(errMsg, 'error');
       }
     } catch (error) { 
       clearInterval(progressInterval);
@@ -578,15 +613,49 @@ const ContentStudio = () => {
               {/* Bottom Sticky Panel has been replaced with a Modal below */}
             </div>
           ) : (
-            <div className="glass-panel animate-fade-in" style={{ padding: '4rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '1.5rem', minHeight: '400px' }}>
-              <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '1.5rem', borderRadius: '50%' }}>
-                <Sparkles size={40} color="var(--color-primary)" />
+            <div className="glass-panel animate-fade-in" style={{ padding: '3.5rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '1.25rem', minHeight: '420px', maxWidth: '680px', margin: '0 auto', width: '100%' }}>
+              <div style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15))', padding: '1.25rem', borderRadius: '50%', boxShadow: '0 0 20px rgba(59, 130, 246, 0.2)' }}>
+                <Sparkles size={38} color="var(--color-primary)" />
               </div>
               <div>
-                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.3rem', color: 'var(--color-text)' }}>Ready to Create?</h3>
-                <p style={{ margin: 0, color: 'var(--color-text-muted)', maxWidth: '400px', lineHeight: '1.5' }}>
-                  Click "Generate 5 Options" to use the AI Prompt Engine and create perfectly tailored content for your brand.
-                </p>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.35rem', color: 'var(--color-text)', fontWeight: 700 }}>
+                  Ready to Create Content?
+                </h3>
+                {topic ? (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <p style={{ margin: '0 0 0.6rem 0', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                      Selected Topic:
+                    </p>
+                    <span style={{ 
+                      display: 'inline-flex', alignItems: 'center', gap: '0.4rem', 
+                      background: 'rgba(59, 130, 246, 0.15)', color: 'var(--color-primary)', 
+                      padding: '0.35rem 0.85rem', borderRadius: '20px', fontWeight: 600, fontSize: '0.85rem',
+                      border: '1px solid rgba(59, 130, 246, 0.3)'
+                    }}>
+                      ✓ {topic}
+                    </span>
+                  </div>
+                ) : (
+                  <p style={{ margin: '0 auto 1.25rem', color: 'var(--color-text-muted)', maxWidth: '460px', lineHeight: '1.6', fontSize: '0.88rem' }}>
+                    To generate AI-powered social media posts, please first select or configure your <strong style={{ color: 'var(--color-text)' }}>Topic</strong> in <span style={{ color: 'var(--color-primary)' }}>Brand Setup</span>. The AI uses this context to craft 5 perfectly tailored creative options.
+                  </p>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => navigate('/brand-setup')} 
+                    style={{ padding: '0.6rem 1.25rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    Change Topic &rarr;
+                  </button>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={handleGenerate} 
+                    style={{ padding: '0.6rem 1.4rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 14px rgba(59,130,246,0.3)' }}
+                  >
+                    <Sparkles size={16} /> Generate 5 Options
+                  </button>
+                </div>
               </div>
             </div>
           )}

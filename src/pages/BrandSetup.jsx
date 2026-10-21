@@ -376,14 +376,24 @@ const BrandSetup = () => {
             <MultiTagInput 
               options={['Product Launch', 'Hiring Post', 'Tips & Tricks', 'MSME', 'AI Agents', 'Client Testimonial', 'Behind the Scenes', 'Holiday Greetings', 'Industry News', 'Special Offer', 'Company Milestone', 'Event Announcement', 'Educational Post']}
               value={topic} 
-              onChange={(val) => { setTopic(val); sessionStorage.setItem('bs_has_edits', 'true'); }} 
+              onChange={(val) => { 
+                setTopic(val); 
+                sessionStorage.setItem('bs_topic', val);
+                sessionStorage.setItem('bs_has_edits', 'true'); 
+              }} 
             />
           </div>
           <button 
             className="btn btn-primary" 
             style={{ width: '100%' }}
-            onClick={() => navigate('/studio')}
-            
+            onClick={() => {
+              if (!topic || !topic.trim()) {
+                showToast('Please select or enter a topic above before proceeding to Content Studio.', 'info');
+                return;
+              }
+              sessionStorage.setItem('bs_topic', topic);
+              navigate('/studio', { state: { topic } });
+            }}
           >
             Start Generating in Content Studio &rarr;
           </button>

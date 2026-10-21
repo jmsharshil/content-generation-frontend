@@ -27,6 +27,7 @@ const Dashboard = () => {
   });
 
   const [postsList, setPostsList] = useState([]);
+  const [adCampaignsList, setAdCampaignsList] = useState([]);
   const [scheduledPosts, setScheduledPosts] = useState([]);
   const [businessName, setBusinessName] = useState(() => localStorage.getItem('business_name') || 'Your Brand');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -43,6 +44,7 @@ const Dashboard = () => {
       await Promise.allSettled([
         fetchStats(),
         fetchPostsHistory(),
+        fetchAdsHistory(),
         fetchScheduledPosts(),
       ]);
     } catch (err) {
@@ -83,6 +85,21 @@ const Dashboard = () => {
     }
   };
 
+  const fetchAdsHistory = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ads/history/`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const results = Array.isArray(data) ? data : (data.results || []);
+        setAdCampaignsList(results);
+      }
+    } catch (err) {
+      console.error('Error loading ads history', err);
+    }
+  };
+
   const fetchScheduledPosts = async () => {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/posts/?status=APPROVED`, {
@@ -98,7 +115,7 @@ const Dashboard = () => {
     }
   };
 
-  // Compute Last 7 Days Activity Breakdown (Posts vs Campaigns/Automations)
+  // Compute Last 7 Days Activity Breakdown strictly matching the KPI cards
   const { chartData, total7DaysPosts, total7DaysCampaigns, total7DaysActions } = useMemo(() => {
     const days = [];
     const postsCountMap = {};
@@ -115,9 +132,10 @@ const Dashboard = () => {
       adsCountMap[key] = 0;
     }
 
-    // 1. Group Published & Created Posts by date
-    postsList.forEach(post => {
-      const dateStr = post.created_at || post.date || post.scheduled_at;
+    // 1. Group ONLY Published Posts by date (must match card count)
+    const publishedPostsList = postsList.filter(p => p.status === 'PUBLISHED' || p.is_published);
+    publishedPostsList.forEach(post => {
+      const dateStr = post.published_at || post.date || post.created_at || post.scheduled_at;
       if (dateStr) {
         const key = dateStr.split('T')[0];
         if (postsCountMap[key] !== undefined) {
@@ -126,15 +144,28 @@ const Dashboard = () => {
       }
     });
 
-    // 2. Group Ads & Activities by date
-    (stats.recent_activity || []).forEach(act => {
-      if (act.date) {
-        const key = act.date.split('T')[0];
+    // 2. Group Ad Campaigns by created date
+    adCampaignsList.forEach(camp => {
+      const dateStr = camp.created_at || camp.date;
+      if (dateStr) {
+        const key = dateStr.split('T')[0];
         if (adsCountMap[key] !== undefined) {
           adsCountMap[key] += 1;
         }
       }
     });
+
+    // If ad campaigns API is empty or didn't return dates, fallback to stats.recent_activity type === 'AD'
+    if (adCampaignsList.length === 0 && (stats.recent_activity || []).length > 0) {
+      (stats.recent_activity || []).forEach(act => {
+        if (act.type === 'AD' && act.date) {
+          const key = act.date.split('T')[0];
+          if (adsCountMap[key] !== undefined) {
+            adsCountMap[key] += 1;
+          }
+        }
+      });
+    }
 
     let pSum = 0;
     let aSum = 0;
@@ -149,7 +180,7 @@ const Dashboard = () => {
         name: d.shortLabel,
         fullDate: d.label,
         'Published Posts': p,
-        'Campaigns & Actions': a,
+        'Ad Campaigns': a,
         total: p + a
       };
     });
@@ -160,7 +191,7 @@ const Dashboard = () => {
       total7DaysCampaigns: aSum,
       total7DaysActions: pSum + aSum
     };
-  }, [postsList, stats.recent_activity]);
+  }, [postsList, adCampaignsList, stats.recent_activity]);
 
   // Selected Stat Cards
   const statCards = [
@@ -231,8 +262,8 @@ const Dashboard = () => {
               <strong>{data['Published Posts']}</strong>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', color: '#f59e0b' }}>
-              <span>• Campaigns & Actions:</span>
-              <strong>{data['Campaigns & Actions']}</strong>
+              <span>• Ad Campaigns:</span>
+              <strong>{data['Ad Campaigns']}</strong>
             </div>
             <div style={{ borderTop: '1px solid var(--color-border)', marginTop: '0.3rem', paddingTop: '0.3rem', display: 'flex', justifyContent: 'space-between', color: 'var(--color-text)', fontWeight: 600 }}>
               <span>Total Activity:</span>
@@ -447,7 +478,7 @@ const Dashboard = () => {
                 wrapperStyle={{ paddingBottom: '8px', fontSize: '11px', color: 'var(--color-text-muted)' }} 
               />
               <Bar dataKey="Published Posts" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={28} />
-              <Bar dataKey="Campaigns & Actions" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={28} />
+              <Bar dataKey="Ad Campaigns" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={28} />
             </BarChart>
           </ResponsiveContainer>
         </div>

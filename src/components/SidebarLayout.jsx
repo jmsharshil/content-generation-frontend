@@ -13,7 +13,7 @@ const SidebarLayout = ({ children, title }) => {
   const [businessName, setBusinessName] = useState(() => localStorage.getItem('business_name') || 'JMS Automation');
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('user_email') || '');
 
-  const sidebarWidth = isCollapsed ? '64px' : '200px';
+  const sidebarWidth = isCollapsed ? '72px' : '245px';
 
   React.useEffect(() => {
     const fetchMe = async () => {
@@ -55,13 +55,13 @@ const SidebarLayout = ({ children, title }) => {
   }, [navigate, showToast]);
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={16} /> },
-    { name: 'Brand Setup', path: '/brand-setup', icon: <BookOpen size={16} /> },
-    { name: 'Content Studio', path: '/studio', icon: <PenTool size={16} /> },
-    { name: 'History', path: '/history', icon: <Clock size={16} /> },
-    { name: 'Ad Campaigns', path: '/ad-campaigns', icon: <Megaphone size={16} /> },
-    { name: 'Auto-Reply', path: '/auto-reply', icon: <MessageSquareReply size={16} /> },
-    { name: 'Profile', path: '/profile', icon: <User size={16} /> },
+    { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={19} /> },
+    { name: 'Brand Setup', path: '/brand-setup', icon: <BookOpen size={19} /> },
+    { name: 'Content Studio', path: '/studio', icon: <PenTool size={19} /> },
+    { name: 'History', path: '/history', icon: <Clock size={19} /> },
+    { name: 'Ad Campaigns', path: '/ad-campaigns', icon: <Megaphone size={19} /> },
+    { name: 'Auto-Reply', path: '/auto-reply', icon: <MessageSquareReply size={19} /> },
+    { name: 'Profile', path: '/profile', icon: <User size={19} /> },
   ];
 
   const handleLogout = async () => {
@@ -113,37 +113,38 @@ const SidebarLayout = ({ children, title }) => {
           borderRight: '1px solid var(--color-border)',
           display: 'flex',
           flexDirection: 'column',
-          padding: isCollapsed ? '0.75rem 0.4rem' : '0.75rem',
+          padding: isCollapsed ? '1rem 0.5rem' : '1.25rem 1rem',
           position: 'fixed',
           height: '100vh',
           zIndex: 20,
-          transition: 'width 0.25s ease-in-out, transform 0.25s ease-in-out'
+          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.15)',
+          transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0', marginBottom: '1.25rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingBottom: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--color-border)', alignItems: 'center' }}>
 
           {/* Top Row: Toggle Button */}
-          <div style={{ width: '100%', display: 'flex', justifyContent: isCollapsed ? 'center' : 'flex-end', padding: isCollapsed ? '0' : '0 0.75rem' }}>
+          <div style={{ width: '100%', display: 'flex', justifyContent: isCollapsed ? 'center' : 'flex-end', padding: isCollapsed ? '0' : '0 0.25rem' }}>
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="desktop-only"
               title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
               style={{
-                background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
-                color: 'var(--color-text-muted)', cursor: 'pointer', padding: '5px', display: 'flex',
+                background: 'rgba(255, 255, 255, 0.04)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+                color: 'var(--color-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'all 0.2s'
               }}
             >
-              {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+              {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
             </button>
           </div>
 
-          {/* Bottom Row: Logo (Always Centered) */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '38px', width: '100%' }}>
+          {/* Bottom Row: Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '48px', width: '100%' }}>
             <img
               src="https://hrmsknowcraftstorage.blob.core.windows.net/media/JMS.png"
               alt="JMS Logo"
-              style={{ height: isCollapsed ? '24px' : '38px', objectFit: 'contain', transition: 'all 0.25s' }}
+              style={{ height: isCollapsed ? '28px' : '44px', maxWidth: '100%', objectFit: 'contain', transition: 'all 0.25s' }}
             />
           </div>
 
@@ -153,14 +154,14 @@ const SidebarLayout = ({ children, title }) => {
             onClick={() => setSidebarOpen(false)}
             style={{
               background: 'none', border: 'none', color: 'var(--color-text-muted)',
-              cursor: 'pointer', padding: '4px', display: 'none', position: 'absolute', right: '10px', top: '15px'
+              cursor: 'pointer', padding: '6px', display: 'none', position: 'absolute', right: '12px', top: '16px'
             }}
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
-        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {navItems.map(item => (
             <NavLink
               key={item.path}
@@ -171,13 +172,18 @@ const SidebarLayout = ({ children, title }) => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: isCollapsed ? 'center' : 'flex-start',
-                gap: '0.6rem',
-                padding: isCollapsed ? '0.6rem 0' : '0.45rem 0.75rem',
+                gap: '0.85rem',
+                padding: isCollapsed ? '0.75rem 0' : '0.65rem 0.9rem',
                 borderRadius: 'var(--radius-md)',
-                fontSize: '0.8rem',
-                color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                background: isActive ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
-                fontWeight: isActive ? '500' : '400',
+                fontSize: '0.9rem',
+                letterSpacing: '0.01em',
+                color: isActive ? '#ffffff' : 'var(--color-text-muted)',
+                background: isActive 
+                  ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.22) 0%, rgba(99, 102, 241, 0.16) 100%)' 
+                  : 'transparent',
+                borderLeft: isActive && !isCollapsed ? '3px solid var(--color-primary)' : '3px solid transparent',
+                border: isActive ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid transparent',
+                fontWeight: isActive ? '600' : '500',
                 transition: 'all var(--transition-fast)',
                 textDecoration: 'none'
               })}
@@ -188,41 +194,54 @@ const SidebarLayout = ({ children, title }) => {
           ))}
         </nav>
 
-        <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem', paddingBottom: '0.5rem' }}>
+        {/* User profile & footer actions */}
+        <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1rem', marginTop: '0.5rem' }}>
           {!isCollapsed ? (
-            <div style={{ padding: '0 0.75rem', marginBottom: '0.75rem' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-primary)', flexShrink: 0 }}></div>
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '0.65rem 0.8rem',
+              marginBottom: '0.75rem'
+            }}>
+              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', flexShrink: 0, boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)' }}></div>
                 <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{businessName}</span>
               </div>
               {userEmail && (
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.2rem', paddingLeft: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem', paddingLeft: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {userEmail}
                 </div>
               )}
             </div>
           ) : (
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }} title={businessName}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--color-primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--color-primary), #6366f1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)' }}>
                 {businessName ? businessName.charAt(0).toUpperCase() : 'B'}
               </div>
             </div>
           )}
 
-          <div style={{ height: '1px', background: 'var(--color-border)', margin: '0.5rem 0' }}></div>
-
           <button
             onClick={handleLogout}
             title={isCollapsed ? "Logout" : ""}
             style={{
-              display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '0.6rem',
-              color: 'var(--color-text-muted)', fontSize: '0.8rem',
-              padding: isCollapsed ? '0.6rem 0' : '0.45rem 0.75rem', background: 'none', border: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '0.75rem',
+              color: 'var(--color-text-muted)', fontSize: '0.88rem', fontWeight: '500',
+              padding: isCollapsed ? '0.7rem 0' : '0.6rem 0.85rem', background: 'none', border: '1px solid transparent',
               cursor: 'pointer', width: '100%', borderRadius: 'var(--radius-md)',
               transition: 'all var(--transition-fast)'
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--color-danger)';
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--color-text-muted)';
+              e.currentTarget.style.background = 'none';
+            }}
           >
-            <LogOut size={16} />
+            <LogOut size={18} />
             {!isCollapsed && <span>Logout</span>}
           </button>
         </div>
@@ -266,7 +285,7 @@ const SidebarLayout = ({ children, title }) => {
           }
           .sidebar {
             transform: translateX(-100%);
-            width: 200px !important;
+            width: 250px !important;
           }
           .sidebar.sidebar-open {
             transform: translateX(0) !important;
